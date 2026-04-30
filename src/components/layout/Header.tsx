@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom"
-import { Bell, LogOut, Search, ChevronRight } from "lucide-react"
+import { Bell, LogOut, Search, ChevronRight, Menu } from "lucide-react"
 import { useAuthStore } from "@/features/auth/store"
 import { useAppStore } from "@/store"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,11 @@ const pageLabels: Record<string, string> = {
   "/alerts": "Alertes",
 }
 
-export function Header() {
+interface Props {
+  onOpenDrawer: () => void
+}
+
+export function Header({ onOpenDrawer }: Props) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -49,9 +53,22 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-6 bg-white/80 backdrop-blur-xl border-b border-slate-200/80">
-      {/* Breadcrumb / Greeting */}
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-white/80 backdrop-blur-xl border-b border-slate-200/80">
+      {/* Mobile hamburger + page title */}
+      <div className="flex items-center gap-2 min-w-0 lg:hidden">
+        <button
+          type="button"
+          onClick={onOpenDrawer}
+          className="flex items-center justify-center h-10 w-10 rounded-xl text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer"
+          aria-label="Ouvrir le menu"
+        >
+          <Menu className="h-5 w-5" strokeWidth={2.2} />
+        </button>
+        <h1 className="text-base font-bold text-slate-900 truncate">{currentPage}</h1>
+      </div>
+
+      {/* Desktop breadcrumb */}
+      <div className="hidden lg:flex items-center gap-3 min-w-0">
         <div className="flex items-center gap-2 text-sm">
           <span className="text-slate-400 font-medium">GlobalTrack</span>
           <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
@@ -59,7 +76,7 @@ export function Header() {
         </div>
       </div>
 
-      {/* Search bar (visual) */}
+      {/* Search bar (desktop only) */}
       <div className="hidden md:flex flex-1 max-w-md mx-8">
         <div className="relative w-full group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -74,13 +91,24 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
+        {/* Search icon on small screens */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden h-10 w-10 rounded-xl hover:bg-slate-100"
+          aria-label="Rechercher"
+        >
+          <Search className="h-5 w-5 text-slate-600" />
+        </Button>
+
         {/* Notifications */}
         <Button
           variant="ghost"
           size="icon"
           className="relative h-10 w-10 rounded-xl hover:bg-slate-100"
           onClick={() => navigate("/alerts")}
+          aria-label="Alertes"
         >
           <Bell className="h-5 w-5 text-slate-600" />
           {newAlerts > 0 && (
@@ -95,7 +123,7 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="relative h-10 pl-1.5 pr-3 rounded-xl hover:bg-slate-100 flex items-center gap-2"
+              className="relative h-10 pl-1.5 pr-1.5 sm:pr-3 rounded-xl hover:bg-slate-100 flex items-center gap-2"
             >
               <Avatar className="h-7 w-7">
                 <AvatarFallback className="gradient-primary text-white text-xs font-bold shadow-glow">

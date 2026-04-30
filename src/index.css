@@ -199,6 +199,70 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
   }
+
+  /* Sheet / Drawer animations */
+  @keyframes sheet-overlay-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes sheet-overlay-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes sheet-slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes sheet-slide-out-left {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
+  @keyframes sheet-slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes sheet-slide-out-right {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
+  }
+  @keyframes sheet-slide-in-bottom {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes sheet-slide-out-bottom {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
+  }
+  @keyframes sheet-slide-in-top {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes sheet-slide-out-top {
+    from { transform: translateY(0); }
+    to { transform: translateY(-100%); }
+  }
+  .sheet-overlay[data-state="open"] {
+    animation: sheet-overlay-in 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .sheet-overlay[data-state="closed"] {
+    animation: sheet-overlay-out 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .sheet-side-left[data-state="open"]   { animation: sheet-slide-in-left   320ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .sheet-side-left[data-state="closed"] { animation: sheet-slide-out-left  260ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .sheet-side-right[data-state="open"]   { animation: sheet-slide-in-right   320ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .sheet-side-right[data-state="closed"] { animation: sheet-slide-out-right  260ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .sheet-side-bottom[data-state="open"]   { animation: sheet-slide-in-bottom   320ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .sheet-side-bottom[data-state="closed"] { animation: sheet-slide-out-bottom  260ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .sheet-side-top[data-state="open"]   { animation: sheet-slide-in-top   320ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .sheet-side-top[data-state="closed"] { animation: sheet-slide-out-top  260ms cubic-bezier(0.32, 0.72, 0, 1); }
+
+  /* Safe area for iOS bottom nav */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .h-safe-bottom {
+    height: env(safe-area-inset-bottom);
+  }
   .animate-fade-in {
     animation: fade-in 0.5s ease-out both;
   }
