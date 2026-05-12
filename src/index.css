@@ -103,6 +103,7 @@
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01", "ss03";
     letter-spacing: -0.01em;
+    overflow-x: clip;
   }
 
   h1, h2, h3, h4 {
@@ -259,6 +260,22 @@
   /* Safe area for iOS bottom nav */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  /* Horizontal tab lists: scroll without ugly scrollbar on supporting browsers */
+  .tabs-scroll {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+  .tabs-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+  .tabs-scroll::-webkit-scrollbar-thumb {
+    background: rgb(203 213 225);
+    border-radius: 999px;
   }
   .h-safe-bottom {
     height: env(safe-area-inset-bottom);

@@ -41,7 +41,7 @@ interface ReincubateResponse {
   }
 }
 
-const API_BASE = "/api/apple"
+const API_BASE = `${import.meta.env.VITE_API_URL ?? "/api"}/apple`
 
 /**
  * Check an Apple device by IMEI or serial number via the Reincubate API.

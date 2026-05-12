@@ -2,6 +2,9 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { User } from "@/types"
 import { authApi } from "@/api"
+import { queryClient } from "@/lib/query-client"
+import { resetBundleAlertRefreshFlag } from "@/lib/session-query-flags"
+import { useAppStore } from "@/store"
 
 interface AuthState {
   user: User | null
@@ -36,11 +39,14 @@ export const useAuthStore = create<AuthState>()(
         try {
           const refreshToken = localStorage.getItem("refreshToken") ?? undefined
           await authApi.logout(refreshToken)
-        } finally {
-          localStorage.removeItem("accessToken")
-          localStorage.removeItem("refreshToken")
-          set({ user: null, isAuthenticated: false })
-        }
+      } finally {
+        localStorage.removeItem("accessToken")
+        localStorage.removeItem("refreshToken")
+        set({ user: null, isAuthenticated: false })
+        queryClient.clear()
+        resetBundleAlertRefreshFlag()
+        useAppStore.getState().resetSession()
+      }
       },
 
       toggleSidebar: () =>

@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { useParams, Link } from "react-router-dom"
 import {
   ArrowLeft, Phone, Mail, MapPin, Calendar,
-  ShoppingBag, DollarSign, AlertTriangle,
+  ShoppingBag, DollarSign, AlertTriangle, DoorOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +11,7 @@ import { StatsCard } from "@/components/common/StatsCard"
 import { PaymentStatusBadge } from "@/components/common/StatusBadge"
 import { PaymentProgress } from "@/components/common/PaymentProgress"
 import { EmptyState } from "@/components/common/EmptyState"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { useAppStore } from "@/store"
 
 export default function ClientDetailPage() {
@@ -22,6 +22,7 @@ export default function ClientDetailPage() {
   const getClientSales = useAppStore((s) => s.getClientSales)
   const getClientDebt = useAppStore((s) => s.getClientDebt)
   const getPhone = useAppStore((s) => s.getPhone)
+  const sorties = useAppStore((s) => s.sorties)
 
   const client = useMemo(
     () => (id ? getClient(id) : undefined),
@@ -46,6 +47,21 @@ export default function ClientDetailPage() {
   const activeCredits = useMemo(
     () => clientSales.filter((s) => s.type === "credit" && s.paymentStatus !== "paye"),
     [clientSales]
+  )
+
+  const clientSorties = useMemo(
+    () => (id ? sorties.filter((x) => x.clientId === id) : []),
+    [id, sorties],
+  )
+
+  const sortiesEnCours = useMemo(
+    () => clientSorties.filter((x) => x.status === "en_cours").length,
+    [clientSorties],
+  )
+
+  const sortiesTerminees = useMemo(
+    () => clientSorties.filter((x) => x.status === "retournee").length,
+    [clientSorties],
   )
 
   if (!client) {
@@ -114,7 +130,7 @@ export default function ClientDetailPage() {
           </CardContent>
         </Card>
 
-        <div className="lg:col-span-2 grid gap-4 sm:grid-cols-3">
+        <div className="lg:col-span-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatsCard
             title="Total achats"
             value={client.totalPurchases}
@@ -133,7 +149,87 @@ export default function ClientDetailPage() {
             icon={AlertTriangle}
             iconColor={clientDebt > 0 ? "text-red-600" : "text-emerald-600"}
           />
+          <StatsCard
+            title="Sorties (emprunts)"
+            value={clientSorties.length}
+            icon={DoorOpen}
+            iconColor={clientSorties.length > 0 ? "text-orange-600" : "text-slate-400"}
+          />
         </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 className="text-lg font-semibold">Sorties (essai / dépôt)</h2>
+          <Link to="/sorties">
+            <Button variant="outline" size="sm">
+              Voir la page Sorties
+            </Button>
+          </Link>
+        </div>
+        {clientSorties.length === 0 ? (
+          <EmptyState
+            icon={DoorOpen}
+            title="Aucune sortie"
+            description="Ce client n’a pas encore d’emprunt enregistré (sortie 48 h) avec son profil."
+          />
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {sortiesEnCours > 0 && (
+                <span className="text-amber-700 font-medium">{sortiesEnCours} en cours</span>
+              )}
+              {sortiesEnCours > 0 && sortiesTerminees > 0 && " · "}
+              {sortiesTerminees > 0 && (
+                <span>{sortiesTerminees} terminée{sortiesTerminees > 1 ? "s" : ""}</span>
+              )}
+              {sortiesEnCours === 0 && sortiesTerminees === 0 && (
+                <span>{clientSorties.length} enregistrement(s)</span>
+              )}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {clientSorties.map((exit) => (
+                <Card key={exit.id}>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">
+                          {exit.phone.brand} {exit.phone.model}
+                        </p>
+                        <Link
+                          to={`/stock/${exit.phoneId}`}
+                          className="font-mono text-xs text-muted-foreground hover:underline"
+                        >
+                          {exit.phone.imei}
+                        </Link>
+                      </div>
+                      <span
+                        className={
+                          exit.status === "en_cours"
+                            ? "shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900"
+                            : "shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+                        }
+                      >
+                        {exit.status === "en_cours" ? "En cours" : "Retournée"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{exit.motif}</p>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p>Départ : {formatDateTime(exit.createdAt)}</p>
+                      {exit.status === "en_cours" ? (
+                        <p>Échéance : {formatDateTime(exit.dueAt)}</p>
+                      ) : exit.returnedAt ? (
+                        <p>Retour : {formatDateTime(exit.returnedAt)}</p>
+                      ) : null}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <Separator />

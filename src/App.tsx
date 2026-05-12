@@ -18,6 +18,8 @@ import ClientDetailPage from "@/pages/clients/ClientDetailPage"
 import UsersListPage from "@/pages/users/UsersListPage"
 import UserFormPage from "@/pages/users/UserFormPage"
 import AlertsPage from "@/pages/alerts/AlertsPage"
+import AdminDashboardPage from "@/pages/admin/AdminDashboardPage"
+import EmployeeActivityPage from "@/pages/admin/EmployeeActivityPage"
 
 export default function App() {
   return (
@@ -41,10 +43,12 @@ export default function App() {
           <Route path="/users" element={<UsersListPage />} />
           <Route path="/users/new" element={<UserFormPage />} />
           <Route path="/alerts" element={<AlertsPage />} />
+          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/employees/:id/activity" element={<EmployeeActivityPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <Toaster position="top-right" richColors closeButton />
+      <Toaster position="top-center" richColors closeButton />
     </BrowserRouter>
   )
 }

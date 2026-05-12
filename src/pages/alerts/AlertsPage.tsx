@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import {
   CreditCard, Package, AlertTriangle, Bell,
   Eye, CheckCircle2, BellRing, Timer,
@@ -25,11 +25,6 @@ export default function AlertsPage() {
   const alerts = useAppStore((s) => s.alerts)
   const markAlertViewed = useAppStore((s) => s.markAlertViewed)
   const resolveAlert = useAppStore((s) => s.resolveAlert)
-  const refreshAlerts = useAppStore((s) => s.refreshAlerts)
-
-  useEffect(() => {
-    void refreshAlerts()
-  }, [])
 
   const stats = useMemo(() => ({
     total: alerts.length,
@@ -55,9 +50,9 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Alertes et notifications</h1>
-        <p className="text-muted-foreground">Suivez les alertes de votre inventaire</p>
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold sm:text-2xl">Alertes et notifications</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">Suivez les alertes de votre inventaire</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -67,7 +62,7 @@ export default function AlertsPage() {
         <StatsCard title="Résolues" value={stats.resolue} icon={CheckCircle2} iconColor="text-emerald-600" />
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" className="min-w-0">
         <TabsList>
           <TabsTrigger value="all">Toutes ({alerts.length})</TabsTrigger>
           <TabsTrigger value="credit_retard">Crédits en retard ({creditAlerts.length})</TabsTrigger>

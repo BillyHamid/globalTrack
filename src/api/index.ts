@@ -7,6 +7,9 @@ import type {
   User, Phone, Client, Sale, Payment, StockMovement, Alert, ActivityLog, PhoneExit,
 } from '@/types'
 
+/** Limite par défaut des listes synchronisées (bundle + refetch ciblés). */
+export const DEFAULT_LIST_LIMIT = 200
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
   login: (email: string, password: string) =>
@@ -150,12 +153,28 @@ export interface IMEICheckResult {
   warnings: string[]
 }
 
+export interface SickwCheckSuccess {
+  success: true
+  model: string | null
+  brand: string | null
+  status: string
+  result: Record<string, unknown>
+}
+
 export const imeiApi = {
   check: (imei: string, options?: { checkBlacklist?: boolean; excludeId?: string }) =>
     apiClient.get<IMEICheckResult>(`/imei/check/${imei}`, { params: options }),
 
   quickCheck: (imei: string) =>
     apiClient.get<{ valid: boolean; error?: string }>(`/imei/quick/${imei}`),
+
+  /** SickW (format beta). `serviceId` optionnel si `SICKW_SERVICE_ID` est défini sur le backend. */
+  sickwCheck: (imei: string, serviceId?: string | number) =>
+    apiClient.post<SickwCheckSuccess>(
+      '/imei/sickw',
+      { imei, ...(serviceId !== undefined ? { serviceId } : {}) },
+      { timeout: 35000 },
+    ).then(r => r.data),
 }
 
 // ─── Alerts ───────────────────────────────────────────────────────────────────
@@ -187,7 +206,7 @@ export const sortiesApi = {
   list: () =>
     apiClient.get<PhoneExit[]>('/sorties'),
 
-  create: (data: { personName: string; phoneId: string; motif: string }) =>
+  create: (data: { clientId: string; phoneId: string; motif: string }) =>
     apiClient.post<PhoneExit>('/sorties', data),
 
   return: (id: string, body?: { notes?: string; returnProof?: string }) =>
@@ -197,7 +216,27 @@ export const sortiesApi = {
     }),
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
+// ─── Bundle GET /api/dashboard (téléphones, ventes, clients, mouvements, alertes, sorties) ─
+export interface DashboardBundle {
+  phones: Phone[]
+  sales: Sale[]
+  clients: Client[]
+  movements: StockMovement[]
+  alerts: Alert[]
+  sorties: PhoneExit[]
+  meta: {
+    limit: number
+    phonesTotal: number
+    salesTotal: number
+    movementsTotal: number
+  }
+}
+
+export const dashboardBundleApi = {
+  get: (params?: { limit?: number }) =>
+    apiClient.get<DashboardBundle>('/dashboard', { params }),
+}
+
 export interface DashboardStats {
   totalStock: number
   soldToday: number
@@ -217,4 +256,70 @@ export const dashboardApi = {
 
   recentActivity: () =>
     apiClient.get<ActivityLog[]>('/dashboard/recent-activity'),
+}
+
+// ─── Admin Dashboard ──────────────────────────────────────────────────────
+export interface AdminStats {
+  totalStock: number
+  soldToday: number
+  activeCredits: number
+  totalDebt: number
+  stockValue: number
+  monthlyRevenue: number
+  globalRecoveryRate: number
+  overdueCredits: number
+  totalOverdueAmount: number
+  vendorPerformance: Array<{
+    vendorId: string
+    vendorName: string
+    vendorEmail: string
+    salesCount: number
+    totalSalesAmount: number
+    paymentsReceived: number
+    averageSaleValue: number
+    recoveryRate: number
+  }>
+}
+
+export interface EmployeeMetrics {
+  salesCount: number
+  activeCredits: number
+  totalDebt: number
+  totalCollected: number
+  recoveryRate: number
+  avgTimeToSale: number
+}
+
+export const adminApi = {
+  /** Un seul HTTP : stats + recovery + employés */
+  adminDashboard: () =>
+    apiClient.get<{
+      stats: AdminStats
+      recoveryMetrics: {
+        byStatus: { paye: number; partiel: number; impaye: number }
+        byVendor: Array<{ vendorName: string; totalAmount: number; collectedAmount: number; rate: number }>
+      }
+      employees: Array<Record<string, unknown>>
+    }>('/admin/dashboard'),
+
+  dashboardStats: () =>
+    apiClient.get<AdminStats>('/admin/dashboard/stats'),
+
+  recoveryMetrics: () =>
+    apiClient.get<any>('/admin/dashboard/recovery-metrics'),
+
+  employees: () =>
+    apiClient.get<any[]>('/admin/employees'),
+
+  employeeActivity: (vendorId: string, limit = 50, offset = 0) =>
+    apiClient.get<{ data: ActivityLog[]; total: number; limit: number; offset: number; page: number }>(
+      `/admin/employees/${vendorId}/activity`,
+      { params: { limit, offset } },
+    ),
+
+  employeeSales: (vendorId: string, limit = 50, offset = 0) =>
+    apiClient.get<any>(`/admin/employees/${vendorId}/sales`, { params: { limit, offset } }),
+
+  employeeMetrics: (vendorId: string) =>
+    apiClient.get<EmployeeMetrics>(`/admin/employees/${vendorId}/metrics`),
 }

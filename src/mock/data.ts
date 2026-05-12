@@ -7,7 +7,7 @@ export const mockUsers: User[] = [
   { id: "u1", name: "Sana DJibrill", email: "sana.djibrill@globaltrack.cd", role: "admin", phone: "+243 991 234 567", createdAt: "2025-01-15", isActive: true },
   { id: "u2", name: "Sana Mohamadi", email: "sana.mohamadi@globaltrack.cd", role: "vendeur", phone: "+243 992 345 678", createdAt: "2025-02-01", isActive: true },
   { id: "u3", name: "Bernadette", email: "bernadette@globaltrack.cd", role: "vendeur", phone: "+243 993 456 789", createdAt: "2025-03-10", isActive: true },
-  { id: "u4", name: "Compte gestion (inactif)", email: "gestion@globaltrack.cd", role: "gestionnaire", phone: "+243 994 567 890", createdAt: "2025-04-05", isActive: false },
+  { id: "u4", name: "Bassirou", email: "bassirou@globaltrack.cd", role: "vendeur", phone: "+243 994 567 890", createdAt: "2025-04-05", isActive: true },
 ]
 
 /** Stock démo : uniquement Apple (iPhone, iPad, Watch, MacBook) et Samsung */

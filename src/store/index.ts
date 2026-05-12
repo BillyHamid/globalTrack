@@ -10,8 +10,22 @@ import { create } from "zustand"
 import type {
   Phone, Sale, Client, StockMovement, Alert, ActivityLog, Payment, PhoneExit,
 } from "@/types"
-import { phonesApi, salesApi, clientsApi, alertsApi, movementsApi, sortiesApi } from "@/api"
+import {
+  dashboardBundleApi,
+  DEFAULT_LIST_LIMIT,
+  phonesApi,
+  salesApi,
+  clientsApi,
+  alertsApi,
+  movementsApi,
+  sortiesApi,
+} from "@/api"
+import type { DashboardBundle } from "@/api"
 import { mockUsers } from "@/mock/data"
+
+const ALERTS_REFRESH_TTL_MS = 30_000
+let refreshAlertsInFlight: Promise<void> | null = null
+let lastAlertsRefreshAt = 0
 
 interface AppStore {
   // ─── État ────────────────────────────────────────────────────────────────
@@ -27,12 +41,16 @@ interface AppStore {
 
   // ─── Initialisation ───────────────────────────────────────────────────────
   loadAll: () => Promise<void>
+  /** Hydrate l’état depuis GET /api/dashboard (bundle unique). */
+  hydrateFromBundle: (bundle: DashboardBundle) => void
+  /** Après logout : vider le cache applicatif local. */
+  resetSession: () => void
 
   // ─── Phone ────────────────────────────────────────────────────────────────
   addPhone: (phone: Omit<Phone, "id" | "status" | "addedAt">, userId: string) => Promise<Phone>
   updatePhone: (id: string, data: Partial<Phone>) => Promise<void>
   deletePhone: (id: string, userId: string) => Promise<boolean>
-  /** Charge un téléphone par id (ex. hors page listée limit=500) et fusionne ventes / stock local */
+  /** Charge un téléphone par id (hors fenêtre du bundle) et fusionne ventes / stock local */
   fetchPhoneById: (id: string) => Promise<Phone | null>
 
   // ─── Sale ─────────────────────────────────────────────────────────────────
@@ -60,7 +78,7 @@ interface AppStore {
   refreshAlerts: () => Promise<void>
 
   // ─── Sorties ──────────────────────────────────────────────────────────────
-  createSortie: (data: { personName: string; phoneId: string; motif: string }) => Promise<PhoneExit>
+  createSortie: (data: { clientId: string; phoneId: string; motif: string }) => Promise<PhoneExit>
   returnSortie: (id: string, opts?: { notes?: string; returnProof?: string }) => Promise<PhoneExit>
 
   // ─── Computed ─────────────────────────────────────────────────────────────
@@ -91,34 +109,49 @@ export const useAppStore = create<AppStore>((set, get) => ({
   initialized: false,
 
   // ─── Initialisation ───────────────────────────────────────────────────────
+  hydrateFromBundle: (bundle) => {
+    const movements = bundle.movements.map((m) => {
+      const pb = m.performedBy as unknown
+      const performedBy =
+        typeof pb === "string"
+          ? pb
+          : pb && typeof pb === "object" && pb !== null && "id" in pb
+            ? String((pb as { id: string }).id)
+            : (m as { performedById?: string }).performedById ?? ""
+      return { ...m, performedBy } as StockMovement
+    })
+    set({
+      phones: bundle.phones,
+      sales: bundle.sales,
+      clients: bundle.clients,
+      movements,
+      alerts: bundle.alerts,
+      sorties: bundle.sorties,
+      initialized: true,
+      loading: false,
+    })
+  },
+
+  resetSession: () => {
+    set({
+      phones: [],
+      sales: [],
+      clients: [],
+      movements: [],
+      alerts: [],
+      sorties: [],
+      activityLogs: [],
+      initialized: false,
+      loading: false,
+    })
+  },
+
   loadAll: async () => {
     if (get().loading) return
     set({ loading: true })
     try {
-      // Refresh alerts first (regenerates expired credits, old stock, overdue exits…),
-      // then list. If refresh fails, fall back to listing existing alerts.
-      const alertsPromise = alertsApi
-        .refresh()
-        .then(() => alertsApi.list())
-        .catch(() => alertsApi.list())
-
-      const [phonesRes, salesRes, clientsRes, movementsRes, alertsRes, sortiesRes] = await Promise.all([
-        phonesApi.list({ limit: 500 }),
-        salesApi.list({ limit: 500 }),
-        clientsApi.list(),
-        movementsApi.list({ limit: 500 }),
-        alertsPromise,
-        sortiesApi.list(),
-      ])
-      set({
-        phones: phonesRes.data.data,
-        sales: salesRes.data.data,
-        clients: clientsRes.data,
-        movements: movementsRes.data.data,
-        alerts: alertsRes.data,
-        sorties: sortiesRes.data,
-        initialized: true,
-      })
+      const { data } = await dashboardBundleApi.get({ limit: DEFAULT_LIST_LIMIT })
+      get().hydrateFromBundle(data)
     } finally {
       set({ loading: false })
     }
@@ -167,7 +200,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ],
       }))
       try {
-        const movRes = await movementsApi.list({ limit: 500 })
+        const movRes = await movementsApi.list({ limit: DEFAULT_LIST_LIMIT })
         set({ movements: movRes.data.data })
       } catch {
         /* le téléphone est chargé même si les mouvements ne se rafraîchissent pas */
@@ -283,9 +316,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   refreshAlerts: async () => {
-    await alertsApi.refresh()
-    const res = await alertsApi.list()
-    set({ alerts: res.data })
+    if (refreshAlertsInFlight) return refreshAlertsInFlight
+
+    const now = Date.now()
+    const isStale = now - lastAlertsRefreshAt > ALERTS_REFRESH_TTL_MS
+    const hasNoData = get().alerts.length === 0
+    if (!isStale && !hasNoData) return
+
+    refreshAlertsInFlight = (async () => {
+      try {
+        await alertsApi.refresh()
+        lastAlertsRefreshAt = Date.now()
+      } finally {
+        refreshAlertsInFlight = null
+      }
+
+      const res = await alertsApi.list()
+      set({ alerts: res.data })
+    })()
+
+    return refreshAlertsInFlight
   },
 
   createSortie: async (data) => {
@@ -298,7 +348,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       ),
     }))
     try {
-      const movementsRes = await movementsApi.list({ limit: 500 })
+      const movementsRes = await movementsApi.list({ limit: DEFAULT_LIST_LIMIT })
       set({ movements: movementsRes.data.data })
     } catch {
       /* la sortie est enregistrée même si le rafraîchissement des mouvements échoue */
@@ -319,7 +369,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       ),
     }))
     try {
-      const movementsRes = await movementsApi.list({ limit: 500 })
+      const movementsRes = await movementsApi.list({ limit: DEFAULT_LIST_LIMIT })
       set({ movements: movementsRes.data.data })
     } catch {
       /* le retour est déjà enregistré côté serveur */

@@ -83,6 +83,8 @@ export type PhoneExitStatus = "en_cours" | "retournee"
 export interface PhoneExit {
   id: string
   personName: string
+  /** Présent pour les sorties créées avec un client en base. */
+  clientId?: string | null
   motif: string
   phoneId: string
   phone: Phone

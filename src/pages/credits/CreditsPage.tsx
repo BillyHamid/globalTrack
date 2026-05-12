@@ -60,9 +60,9 @@ export default function CreditsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Suivi des crédits</h1>
-        <p className="text-muted-foreground">Gérez les ventes à crédit et les paiements en cours</p>
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold sm:text-2xl">Suivi des crédits</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">Gérez les ventes à crédit et les paiements en cours</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -72,7 +72,7 @@ export default function CreditsPage() {
         <StatsCard title="Reste à payer" value={formatCurrency(totalRemaining)} icon={AlertTriangle} iconColor="text-red-600" />
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" className="min-w-0">
         <TabsList>
           <TabsTrigger value="all">Tous ({sorted.length})</TabsTrigger>
           <TabsTrigger value="partiel">Partiellement payé ({partielSales.length})</TabsTrigger>

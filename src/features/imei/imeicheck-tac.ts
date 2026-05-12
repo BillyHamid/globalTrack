@@ -6,7 +6,7 @@ import { inferAppleLineFromMarketingName } from "./device-lines"
  * Le backend ajoute les headers navigateur complets pour contourner Cloudflare
  * et met en cache les résultats 24h (succès) / 30s (échec).
  */
-const IMEICHECK_BASE = "/api/tac"
+const IMEICHECK_BASE = `${import.meta.env.VITE_API_URL ?? "/api"}/tac`
 
 interface IMEICheckJson {
   object?: {

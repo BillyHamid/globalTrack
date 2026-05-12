@@ -20,15 +20,15 @@ export default function StockHistoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Historique des mouvements</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold sm:text-2xl">Historique des mouvements</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             {movements.length} mouvement{movements.length !== 1 ? "s" : ""} au total
           </p>
         </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px] shrink-0">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>

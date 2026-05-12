@@ -16,6 +16,7 @@ const navigationGroups = [
     label: "Aperçu",
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard, color: "from-indigo-500 to-purple-500" },
+      { name: "Aperçu", href: "/admin/dashboard", icon: LayoutDashboard, color: "from-indigo-500 to-purple-500", adminOnly: true },
     ],
   },
   {
@@ -58,6 +59,7 @@ export function MobileDrawer({ open, onOpenChange }: Props) {
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
+        if ((item as any).adminOnly && user?.role !== "admin") return false
         if (user?.role === "vendeur" && item.href === "/users") return false
         return true
       }),

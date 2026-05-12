@@ -53,22 +53,22 @@ export default function UsersListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Gestion des utilisateurs</h1>
-          <p className="text-muted-foreground">{mockUsers.length} utilisateurs</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold sm:text-2xl">Gestion des utilisateurs</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">{mockUsers.length} utilisateurs</p>
         </div>
-        <Link to="/users/new">
-          <Button>
+        <Link to="/users/new" className="shrink-0 w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Nouvel utilisateur
           </Button>
         </Link>
       </div>
 
-      <div className="max-w-[200px]">
+      <div className="w-full max-w-full sm:max-w-[200px]">
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Filtrer par rôle" />
           </SelectTrigger>
           <SelectContent>

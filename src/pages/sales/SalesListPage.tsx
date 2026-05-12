@@ -36,6 +36,7 @@ function SalesTable({
   }
 
   return (
+    <div className="min-w-0 overflow-hidden rounded-lg border bg-card">
     <Table>
       <TableHeader>
         <TableRow>
@@ -85,6 +86,7 @@ function SalesTable({
         })}
       </TableBody>
     </Table>
+    </div>
   )
 }
 
@@ -114,20 +116,20 @@ export default function SalesListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Gestion des ventes</h1>
-          <p className="text-muted-foreground">{sales.length} ventes au total</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold sm:text-2xl">Gestion des ventes</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">{sales.length} ventes au total</p>
         </div>
-        <Link to="/sales/new">
-          <Button>
+        <Link to="/sales/new" className="shrink-0 w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Nouvelle vente
           </Button>
         </Link>
       </div>
 
-      <div className="relative max-w-sm">
+      <div className="relative w-full max-w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Rechercher par téléphone, client, vendeur..."
@@ -137,7 +139,7 @@ export default function SalesListPage() {
         />
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" className="min-w-0">
         <TabsList>
           <TabsTrigger value="all">Toutes ({filteredSales.length})</TabsTrigger>
           <TabsTrigger value="cash">Cash ({cashSales.length})</TabsTrigger>

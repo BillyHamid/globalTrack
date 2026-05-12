@@ -8,6 +8,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { greetingFirstName } from "@/lib/utils"
 
 const roleLabels: Record<string, string> = {
   admin: "Administrateur",
@@ -24,6 +25,7 @@ const pageLabels: Record<string, string> = {
   "/clients": "Clients",
   "/users": "Utilisateurs",
   "/alerts": "Alertes",
+  "/admin/dashboard": "Aperçu",
 }
 
 interface Props {
@@ -53,7 +55,7 @@ export function Header({ onOpenDrawer }: Props) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-white/80 backdrop-blur-xl border-b border-slate-200/80">
+    <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 px-3 pt-safe sm:min-h-16 sm:px-6 bg-white/80 backdrop-blur-xl border-b border-slate-200/80">
       {/* Mobile hamburger + page title */}
       <div className="flex items-center gap-2 min-w-0 lg:hidden">
         <button
@@ -91,7 +93,7 @@ export function Header({ onOpenDrawer }: Props) {
         </div>
       </div>
 
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {/* Search icon on small screens */}
         <Button
           variant="ghost"
@@ -132,7 +134,7 @@ export function Header({ onOpenDrawer }: Props) {
               </Avatar>
               <div className="hidden sm:block text-left">
                 <p className="text-xs font-semibold text-slate-900 leading-tight">
-                  {user?.name.split(" ")[0]}
+                  {greetingFirstName(user?.name)}
                 </p>
                 <p className="text-[10px] text-slate-500 leading-tight">
                   {roleLabels[user?.role ?? ""]}

@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -29,12 +32,13 @@ function isOverdue(exit: PhoneExit): boolean {
 }
 
 export default function SortiesPage() {
-  const { sorties, getAvailablePhones, createSortie, returnSortie, loading } = useAppStore()
+  const { sorties, clients, getAvailablePhones, createSortie, returnSortie, loading } = useAppStore()
   const navigate = useNavigate()
 
-  const [personName, setPersonName] = usePersistedState<string>("sortie-new:personName", "")
+  const [clientId, setClientId] = usePersistedState<string>("sortie-new:clientId", "")
   const [phoneId, setPhoneId] = usePersistedState<string>("sortie-new:phoneId", "")
   const [motif, setMotif] = usePersistedState<string>("sortie-new:motif", "")
+  const [clientSearch, setClientSearch] = useState("")
   const [phoneSearch, setPhoneSearch] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [returningId, setReturningId] = useState<string | null>(null)
@@ -54,6 +58,18 @@ export default function SortiesPage() {
     )
   }, [getAvailablePhones, phoneSearch])
 
+  const filteredClients = useMemo(() => {
+    const q = clientSearch.trim().toLowerCase()
+    const sorted = [...clients].sort((a, b) => a.name.localeCompare(b.name, "fr"))
+    if (!q) return sorted
+    return sorted.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.replace(/\s/g, "").includes(q.replace(/\s/g, "")) ||
+        (c.email ?? "").toLowerCase().includes(q),
+    )
+  }, [clients, clientSearch])
+
   const activeSorties = useMemo(
     () => sorties.filter((s) => s.status === "en_cours"),
     [sorties],
@@ -65,21 +81,22 @@ export default function SortiesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!personName.trim() || !phoneId || !motif.trim()) {
-      toast.error("Renseignez le nom, le téléphone et le motif")
+    if (!clientId || !phoneId || !motif.trim()) {
+      toast.error("Choisissez un client, un appareil et le motif")
       return
     }
     setSubmitting(true)
     try {
       await createSortie({
-        personName: personName.trim(),
+        clientId,
         phoneId,
         motif: motif.trim(),
       })
       toast.success("Sortie enregistrée — échéance 48 h")
-      setPersonName("")
+      setClientId("")
       setPhoneId("")
       setMotif("")
+      setClientSearch("")
       setPhoneSearch("")
       clearDraft("sortie-new:")
     } catch {
@@ -137,13 +154,14 @@ export default function SortiesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base font-semibold">Nouvelle sortie</CardTitle>
-            {(personName || phoneId || motif) && (
+            {(clientId || phoneId || motif) && (
               <DraftIndicator
-                watch={`${personName}|${phoneId}|${motif}`}
+                watch={`${clientId}|${phoneId}|${motif}`}
                 onReset={() => {
-                  setPersonName("")
+                  setClientId("")
                   setPhoneId("")
                   setMotif("")
+                  setClientSearch("")
                   setPhoneSearch("")
                   clearDraft("sortie-new:")
                 }}
@@ -153,14 +171,51 @@ export default function SortiesPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="personName">Nom de la personne</Label>
-                <Input
-                  id="personName"
-                  value={personName}
-                  onChange={(e) => setPersonName(e.target.value)}
-                  placeholder="Prénom et nom"
-                  autoComplete="name"
-                />
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <Label htmlFor="client-select">Client</Label>
+                  <Button variant="link" className="h-auto p-0 text-xs" asChild>
+                    <Link to="/clients/add">Ajouter un client</Link>
+                  </Button>
+                </div>
+                {clients.length === 0 ? (
+                  <p className="text-sm text-muted-foreground rounded-md border border-dashed p-3">
+                    Aucun client en base.{" "}
+                    <Link to="/clients/add" className="text-primary underline font-medium">
+                      Créer un client
+                    </Link>{" "}
+                    pour pouvoir enregistrer une sortie.
+                  </p>
+                ) : (
+                  <>
+                    <Input
+                      id="client-search"
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      placeholder="Filtrer par nom, téléphone ou e-mail…"
+                      className="mb-2"
+                      autoComplete="off"
+                    />
+                    <Select value={clientId || undefined} onValueChange={setClientId}>
+                      <SelectTrigger id="client-select" className="w-full">
+                        <SelectValue placeholder="Choisir un client dans la liste" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[min(60vh,320px)]">
+                        {filteredClients.length === 0 ? (
+                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            Aucun client ne correspond au filtre.
+                          </div>
+                        ) : (
+                          filteredClients.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              <span className="font-medium">{c.name}</span>
+                              <span className="text-muted-foreground"> — {c.phone}</span>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
               </div>
               <PhoneSelector
                 phones={availablePhones}
@@ -179,7 +234,10 @@ export default function SortiesPage() {
                   rows={3}
                 />
               </div>
-              <Button type="submit" disabled={submitting || loading || !availablePhones.length}>
+              <Button
+                type="submit"
+                disabled={submitting || loading || !availablePhones.length || !clients.length || !clientId}
+              >
                 {submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -238,11 +296,12 @@ export default function SortiesPage() {
                           <span className="ml-2 text-xs text-destructive">(dépassé)</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <TableCell className="text-right align-top sm:align-middle">
+                        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
                           <Button
                             size="sm"
                             variant="outline"
+                            className="w-full sm:w-auto"
                             disabled={returningId === exit.id}
                             onClick={() => openReturnDialog(exit)}
                           >
@@ -266,7 +325,7 @@ export default function SortiesPage() {
                                 },
                               })
                             }
-                            className="gradient-success text-white hover:opacity-90"
+                            className="gradient-success w-full text-white hover:opacity-90 sm:w-auto"
                           >
                             <CreditCard className="h-4 w-4" />
                             Payer

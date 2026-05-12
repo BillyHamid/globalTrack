@@ -15,22 +15,99 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import axios from "axios"
 import { validateIMEI } from "@/lib/utils"
 import { imageFileToCompressedDataUrl } from "@/lib/image-data-url"
 import { useAppStore } from "@/store"
 import { useAuthStore } from "@/features/auth/store"
+import { imeiApi } from "@/api"
 import {
-  quickTACLookup,
-  quickTACLookupForVerify,
-  mapTACBrandToAppBrand,
   cleanModelForAutoFill,
 } from "@/features/imei/service"
-import { fetchIMEICheckTAC, mapIMEICheckBrandToAppBrand } from "@/features/imei/imeicheck-tac"
 import { checkAppleDevice, type AppleDeviceInfo } from "@/features/imei/apple-check"
 import { APP_DEVICE_LINES, inferAppleLineFromMarketingName } from "@/features/imei/device-lines"
 
 const BRANDS = APP_DEVICE_LINES
 const CAPACITIES = ["32GB", "64GB", "128GB", "256GB", "512GB", "1TB"]
+
+/** Données affichées après « Vérifier » — uniquement la réponse SickW (format beta). */
+export interface SickwVerificationPayload {
+  manufacturer: string | null
+  modelName: string | null
+  status: string
+  result: Record<string, unknown>
+}
+
+function sickwText(v: unknown): string | null {
+  if (v == null) return null
+  const s = typeof v === "string" ? v.trim() : String(v).trim()
+  return s.length > 0 ? s : null
+}
+
+/** Extrait et renseigne les informations générales depuis le JSON SickW */
+function extractSickwFieldData(result: Record<string, unknown>) {
+  const extracted: { brand?: string; model?: string; capacity?: string; color?: string } = {}
+
+  console.log("🔍 SickW result keys:", Object.keys(result))
+  console.log("📦 SickW complete result:", result)
+
+  // Parcourir TOUTES les clés pour trouver les données
+  const allEntries = Object.entries(result)
+
+  // Marque - chercher dans toutes les clés
+  for (const [key, value] of allEntries) {
+    const val = sickwText(value)
+    if (val && (key.toLowerCase().includes("brand") || key.toLowerCase().includes("manufacturer") || key.toLowerCase().includes("oem"))) {
+      extracted.brand = val
+      console.log(`✅ Brand trouvé: "${val}" (clé: ${key})`)
+      break
+    }
+  }
+
+  // Modèle - chercher dans toutes les clés
+  for (const [key, value] of allEntries) {
+    const val = sickwText(value)
+    if (val && (key.toLowerCase().includes("model") || key.toLowerCase().includes("device"))) {
+      extracted.model = val
+      console.log(`✅ Model trouvé: "${val}" (clé: ${key})`)
+      break
+    }
+  }
+
+  // Capacité - chercher et normaliser
+  for (const [key, value] of allEntries) {
+    const val = sickwText(value)
+    if (val && (key.toLowerCase().includes("storage") || key.toLowerCase().includes("memory") || key.toLowerCase().includes("capacity") || key.toLowerCase().includes("ram"))) {
+      // Normaliser: "256 GB" → "256GB"
+      const normalized = val.replace(/\s+/g, "").toUpperCase()
+      // Vérifier si c'est une capacité valide
+      if (CAPACITIES.includes(normalized)) {
+        extracted.capacity = normalized
+      } else {
+        // Sinon essayer de matcher
+        const match = normalized.match(/(\d+)(GB|TB|MB)/)
+        if (match) {
+          extracted.capacity = `${match[1]}${match[2]}`
+        }
+      }
+      console.log(`✅ Capacity trouvé: "${val}" → "${extracted.capacity}" (clé: ${key})`)
+      break
+    }
+  }
+
+  // Couleur - chercher dans toutes les clés
+  for (const [key, value] of allEntries) {
+    const val = sickwText(value)
+    if (val && (key.toLowerCase().includes("color") || key.toLowerCase().includes("colour"))) {
+      extracted.color = val
+      console.log(`✅ Color trouvé: "${val}" (clé: ${key})`)
+      break
+    }
+  }
+
+  console.log("📋 Extracted data final:", extracted)
+  return extracted
+}
 
 export default function StockAddPage() {
   const navigate = useNavigate()
@@ -54,43 +131,12 @@ export default function StockAddPage() {
   const [verifying, setVerifying] = useState(false)
   const [luhnValid, setLuhnValid] = useState<boolean | null>(null)
   const [imeiUnique, setImeiUnique] = useState<boolean | null>(null)
-  const [tacBrand, setTacBrand] = useState("")
-  const [tacModel, setTacModel] = useState("")
-  const [tacSource, setTacSource] = useState<
-    "" | "imeicheck" | "local" | "local-prefix" | "heuristic"
-  >("")
+  const [sickwVerification, setSickwVerification] = useState<SickwVerificationPayload | null>(null)
   const [appleInfo, setAppleInfo] = useState<AppleDeviceInfo | null>(null)
   const [appleLoading, setAppleLoading] = useState(false)
   const [appleChecked, setAppleChecked] = useState(false)
 
-  const [brandMismatch, setBrandMismatch] = useState(false)
-  const [autoDetectedBrand, setAutoDetectedBrand] = useState("")
-  const [autoDetectedModel, setAutoDetectedModel] = useState("")
   const [submitting, setSubmitting] = useState(false)
-
-  // Auto-detect brand/model from local TAC
-  useEffect(() => {
-    if (imei.length < 8) {
-      setAutoDetectedBrand("")
-      setAutoDetectedModel("")
-      setBrandMismatch(false)
-      return
-    }
-    const tacResult = quickTACLookup(imei)
-    if (tacResult) {
-      const appBrand = mapTACBrandToAppBrand(tacResult.brand, tacResult.model) ?? ""
-      const cleanedModel = cleanModelForAutoFill(tacResult.brand, tacResult.model)
-      setAutoDetectedBrand(appBrand)
-      setAutoDetectedModel(cleanedModel)
-      if (!brand && appBrand) setBrand(appBrand)
-      if (!model && cleanedModel) setModel(cleanedModel)
-      setBrandMismatch(!!(brand && appBrand && brand !== appBrand))
-    } else {
-      setAutoDetectedBrand("")
-      setAutoDetectedModel("")
-      setBrandMismatch(false)
-    }
-  }, [imei, brand, model])
 
   async function handleVerifyIMEI() {
     if (imei.length !== 15) return
@@ -98,9 +144,7 @@ export default function StockAddPage() {
     // Reset
     setLuhnValid(null)
     setImeiUnique(null)
-    setTacBrand("")
-    setTacModel("")
-    setTacSource("")
+    setSickwVerification(null)
     setAppleInfo(null)
     setAppleChecked(false)
     setVerifying(true)
@@ -122,68 +166,51 @@ export default function StockAddPage() {
       toast.error("Cet IMEI est déjà enregistré dans le stock")
     }
 
-    const localHit = quickTACLookupForVerify(imei)
-    // Affichage immédiat : TAC exact, préfixe 6–7 (curée + Osmocom), ou indication générique.
-    if (localHit) {
-      setTacBrand(localHit.entry.brand)
-      setTacModel(localHit.entry.model)
-      setTacSource(
-        localHit.match === "exact"
-          ? "local"
-          : localHit.match === "prefix"
-            ? "local-prefix"
-            : "heuristic",
-      )
-    }
-
-    // Step 3 & 4 : IMEICheck TAC + API Apple (en parallèle)
+    // Step 3 & 4 : SickW (seule source pour marque / modèle après vérification) + API Apple en parallèle
     setAppleLoading(true)
     try {
-      const [apple, imeicheckTac] = await Promise.all([
-        checkAppleDevice(imei),
-        fetchIMEICheckTAC(imei),
-      ])
+      const applePromise = checkAppleDevice(imei)
 
-      if (imeicheckTac) {
-        setTacBrand(imeicheckTac.brand)
-        setTacModel(imeicheckTac.model)
-        setTacSource("imeicheck")
-        const mb = mapIMEICheckBrandToAppBrand(imeicheckTac.brand, imeicheckTac.model)
-        if (mb && !brand) setBrand(mb)
-        if (!model) {
-          const isApple =
-            imeicheckTac.brand.toLowerCase().includes("apple")
-          setModel(
-            isApple
-              ? cleanModelForAutoFill("Apple", imeicheckTac.model)
-              : imeicheckTac.model,
-          )
-        }
+      try {
+        const sw = await imeiApi.sickwCheck(imei)
+        const manufacturer =
+          sickwText(sw.brand) ?? sickwText(sw.result["Manufacturer"])
+        const modelName =
+          sickwText(sw.model) ?? sickwText(sw.result["Model Name"])
+        setSickwVerification({
+          manufacturer,
+          modelName,
+          status: sw.status,
+          result: sw.result,
+        })
+
+        // Auto-fill formulaire depuis JSON SickW complet (source de vérité unique)
+        const extracted = extractSickwFieldData(sw.result)
+        if (extracted.brand) setBrand(extracted.brand)
+        if (extracted.model) setModel(extracted.model)
+        if (extracted.capacity) setCapacity(extracted.capacity)
+        if (extracted.color) setColor(extracted.color)
+        toast.success("IMEI vérifié (SickW)", {
+          description: [manufacturer, modelName].filter(Boolean).join(" — ") || "Réponse reçue",
+        })
+      } catch (err) {
+        setSickwVerification(null)
+        const msg = axios.isAxiosError(err)
+          ? (err.response?.data as { message?: string } | undefined)?.message
+          : undefined
+        toast.error(msg ?? "Échec de la vérification SickW")
       }
+
+      const apple = await applePromise
 
       if (apple) {
         setAppleInfo(apple)
         if (!brand) setBrand(inferAppleLineFromMarketingName(apple.name))
         if (!model) setModel(cleanModelForAutoFill("Apple", apple.name))
         toast.success("Appareil Apple identifié", { description: apple.name })
-      } else if (imeicheckTac && !apple) {
-        toast.success("IMEI identifié (IMEICheck TAC)", {
-          description: `${imeicheckTac.brand} — ${imeicheckTac.model}`,
-        })
       }
     } catch {
-      const again = quickTACLookupForVerify(imei)
-      if (again) {
-        setTacBrand(again.entry.brand)
-        setTacModel(again.entry.model)
-        setTacSource(
-          again.match === "exact"
-            ? "local"
-            : again.match === "prefix"
-              ? "local-prefix"
-              : "heuristic",
-        )
-      }
+      setSickwVerification(null)
     } finally {
       setAppleLoading(false)
       setAppleChecked(true)
@@ -222,9 +249,7 @@ export default function StockAddPage() {
     setImei(val)
     setLuhnValid(null)
     setImeiUnique(null)
-    setTacBrand("")
-    setTacModel("")
-    setTacSource("")
+    setSickwVerification(null)
     setAppleInfo(null)
     setAppleChecked(false)
   }
@@ -390,80 +415,62 @@ export default function StockAddPage() {
                 </div>
               </div>
 
-              {/* Auto-detection from TAC */}
-              {autoDetectedBrand && imei.length >= 8 && !hasVerificationResult && (
-                <InfoBox variant="blue" icon={<Smartphone className="h-4 w-4 text-blue-600 shrink-0" />}>
-                  Détection automatique : <strong>{autoDetectedBrand} {autoDetectedModel}</strong>
-                </InfoBox>
-              )}
 
-              {/* Brand mismatch */}
-              {brandMismatch && (
-                <InfoBox variant="amber" icon={<AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />}>
-                  La marque sélectionnée (<strong>{brand}</strong>) ne correspond pas
-                  à la marque détectée (<strong>{autoDetectedBrand}</strong>).
-                </InfoBox>
-              )}
-
-              {/* ── Verification results (progressive) ── */}
+              {/* ── Verification results (simplifié) ── */}
               {hasVerificationResult && (
-                <div className="rounded-lg border p-4 space-y-3">
+                <div className={`rounded-lg border p-4 space-y-4 ${
+                  sickwVerification
+                    ? "border-emerald-600/30 bg-gradient-to-br from-emerald-600/8 to-emerald-600/3"
+                    : "border-blue-600/30 bg-gradient-to-br from-blue-600/8 to-blue-600/3"
+                }`}>
+                  {/* Statut simplifié */}
                   <div className="flex items-center gap-2 font-semibold text-sm">
-                    {luhnValid && imeiUnique ? (
-                      <><ShieldCheck className="h-5 w-5 text-emerald-600" /> Vérification IMEI</>
+                    {sickwVerification ? (
+                      <><ShieldCheck className="h-5 w-5 text-emerald-600" /> Vérification réussie ✓</>
                     ) : (
-                      <><ShieldX className="h-5 w-5 text-red-600" /> Vérification IMEI</>
+                      <><Loader2 className="h-5 w-5 text-blue-600 animate-spin" /> Vérification en cours…</>
                     )}
                   </div>
 
-                  <div className="grid gap-2 text-sm sm:grid-cols-2">
-                    {/* Luhn */}
-                    <ResultRow ok={luhnValid!} label={`Format Luhn : ${luhnValid ? "Valide" : "Invalide"}`} />
-                    {/* Uniqueness */}
-                    {imeiUnique !== null && (
-                      <ResultRow ok={imeiUnique} label={imeiUnique ? "IMEI unique dans le stock" : "Doublon détecté !"} />
-                    )}
-                    {/* TAC : IMEICheck (prioritaire) ou base locale */}
-                    {tacBrand && (
-                      <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
-                        <ResultRow ok label={`Appareil : ${tacBrand} ${tacModel}`} />
-                        {tacSource === "imeicheck" && (
-                          <Badge variant="outline" className="text-xs shrink-0">IMEICheck TAC</Badge>
+                  {/* Données SickW trouvées - JSON complet */}
+                  {sickwVerification && (
+                    <div className="space-y-3">
+                      {/* Affichage principal: JSON complet */}
+                      <div className="overflow-x-auto rounded-lg border border-emerald-600/30 bg-slate-900 dark:bg-slate-950 shadow-md">
+                        <pre className="p-4 text-emerald-400 dark:text-emerald-300 text-sm leading-relaxed font-mono">
+                          <code>{JSON.stringify(sickwVerification.result, null, 2)}</code>
+                        </pre>
+                      </div>
+
+                      {/* Statut et détails extraits */}
+                      <div className="grid gap-2 text-xs">
+                        <div className="flex items-center justify-between rounded-md bg-emerald-600/10 p-2 border border-emerald-600/20">
+                          <span className="font-medium">Statut API</span>
+                          <Badge variant="outline" className="text-[10px]">{sickwVerification.status}</Badge>
+                        </div>
+                        {sickwVerification.manufacturer && (
+                          <div className="flex items-center justify-between rounded-md bg-emerald-600/10 p-2 border border-emerald-600/20">
+                            <span className="font-medium">Fabricant détecté</span>
+                            <span className="font-mono">{sickwVerification.manufacturer}</span>
+                          </div>
                         )}
-                        {tacSource === "local" && (
-                          <Badge variant="secondary" className="text-xs shrink-0">Base locale</Badge>
-                        )}
-                        {tacSource === "local-prefix" && (
-                          <Badge variant="secondary" className="text-xs shrink-0">Préfixe TAC (curée + Osmocom)</Badge>
-                        )}
-                        {tacSource === "heuristic" && (
-                          <Badge variant="outline" className="text-xs shrink-0">Indication (hors base TAC)</Badge>
+                        {sickwVerification.modelName && (
+                          <div className="flex items-center justify-between rounded-md bg-emerald-600/10 p-2 border border-emerald-600/20">
+                            <span className="font-medium">Modèle détecté</span>
+                            <span className="font-mono">{sickwVerification.modelName}</span>
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* APIs en cours */}
                   {appleLoading && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <Search className="h-4 w-4" />
-                      Interrogation IMEICheck TAC Database et API Apple…
+                      Interrogation SickW et API Apple…
                     </div>
-                  )}
-
-                  {appleChecked && !appleInfo && !appleLoading && !tacBrand && (
-                    <p className="text-xs text-muted-foreground pt-1">
-                      Aucune donnée exploitable : IMEICheck (souvent bloqué par Cloudflare hors navigateur), API Apple
-                      (backend + token Reincubate), et TAC local. L’IMEI est valide au sens Luhn — complétez marque et
-                      modèle à la main.
-                    </p>
-                  )}
-                  {appleChecked && tacSource === "heuristic" && !appleLoading && (
-                    <p className="text-xs text-muted-foreground pt-1">
-                      Aucun TAC à 8 chiffres ni préfixe 6–7 trouvé dans les bases. L’indication ci-dessus repose
-                      uniquement sur les 2 premiers chiffres de l’IMEI ; vérifiez la fiche sur l’appareil.
-                    </p>
                   )}
                 </div>
               )}

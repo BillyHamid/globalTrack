@@ -60,3 +60,15 @@ export function validateIMEI(imei: string): boolean {
   }
   return sum % 10 === 0
 }
+
+/**
+ * Prénom affiché dans les salutations : pour « Sana X », on affiche « X » (ex. DJibrill, Mohamadi).
+ */
+export function greetingFirstName(fullName: string | undefined | null): string {
+  if (!fullName?.trim()) return ""
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length >= 2 && parts[0].toLowerCase() === "sana") {
+    return parts[1] ?? parts[0]
+  }
+  return parts[0] ?? ""
+}

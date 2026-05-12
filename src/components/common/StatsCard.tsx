@@ -55,7 +55,7 @@ export function StatsCard({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 p-6 shadow-soft hover:shadow-premium transition-all duration-300",
+        "group relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 p-4 shadow-soft hover:shadow-premium transition-all duration-300 sm:p-6",
         className,
       )}
     >
@@ -72,7 +72,7 @@ export function StatsCard({
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
             {title}
           </p>
-          <p className="text-3xl font-bold text-slate-900 tracking-tight truncate">
+          <p className="text-2xl font-bold text-slate-900 tracking-tight truncate sm:text-3xl">
             {value}
           </p>
           {trend && (

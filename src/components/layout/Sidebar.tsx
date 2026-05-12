@@ -12,6 +12,7 @@ const navigationGroups = [
     label: "Aperçu",
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard },
+      { name: "Aperçu", href: "/admin/dashboard", icon: LayoutDashboard, adminOnly: true },
     ],
   },
   {
@@ -41,6 +42,7 @@ export function Sidebar() {
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
+        if ((item as any).adminOnly && user?.role !== "admin") return false
         if (user?.role === "vendeur" && item.href === "/users") return false
         return true
       }),

@@ -54,7 +54,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-[#070b18]">
+    <div className="min-h-screen min-h-[100dvh] flex relative overflow-x-hidden overflow-y-auto bg-[#070b18]">
       {/* ─── Aurora background ─────────────────────────────────────────── */}
       <div className="absolute inset-0 z-0">
         {ORBS.map((orb, i) => (

@@ -66,15 +66,15 @@ export default function StockListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Gestion du stock</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold sm:text-2xl">Gestion du stock</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             {availableCount} téléphone{availableCount !== 1 ? "s" : ""} disponible{availableCount !== 1 ? "s" : ""}
           </p>
         </div>
-        <Link to="/stock/add">
-          <Button>
+        <Link to="/stock/add" className="shrink-0 w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Ajouter un téléphone
           </Button>
@@ -125,7 +125,7 @@ export default function StockListPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="p-0">
           {filteredPhones.length === 0 ? (
             <EmptyState
@@ -176,24 +176,25 @@ export default function StockListPage() {
                       </TableCell>
                       <TableCell>{formatDate(phone.addedAt)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex flex-wrap justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="h-8 shrink-0 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
                             onClick={(e) => {
                               e.stopPropagation()
                               navigate(`/stock/${phone.id}`)
                             }}
                           >
-                            <Eye className="mr-1 h-4 w-4" />
+                            <Eye className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Voir
                           </Button>
                           {phone.status === "disponible" && (
                             <div onClick={(e) => e.stopPropagation()}>
                               <ConfirmDialog
                                 trigger={
-                                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                                    <Trash2 className="mr-1 h-4 w-4" />
+                                  <Button variant="ghost" size="sm" className="h-8 shrink-0 px-2 text-xs text-destructive hover:text-destructive sm:h-9 sm:px-3 sm:text-sm">
+                                    <Trash2 className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                     Supprimer
                                   </Button>
                                 }

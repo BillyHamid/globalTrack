@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { Link } from "react-router-dom"
 import {
   Package, ShoppingCart, CreditCard, DollarSign,
@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { StatsCard } from "@/components/common/StatsCard"
 import { PaymentStatusBadge } from "@/components/common/StatusBadge"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatCurrency, formatDate, greetingFirstName } from "@/lib/utils"
 import { useAppStore } from "@/store"
 import { useAuthStore } from "@/features/auth/store"
 
@@ -35,17 +35,12 @@ export default function DashboardPage() {
   const movements = useAppStore((s) => s.movements)
   const alerts = useAppStore((s) => s.alerts)
   const clients = useAppStore((s) => s.clients)
-  const refreshAlerts = useAppStore((s) => s.refreshAlerts)
   const getAvailablePhones = useAppStore((s) => s.getAvailablePhones)
   const getActiveCredits = useAppStore((s) => s.getActiveCredits)
   const getOverdueCredits = useAppStore((s) => s.getOverdueCredits)
   const getStockByBrand = useAppStore((s) => s.getStockByBrand)
   const getUser = useAppStore((s) => s.getUser)
   const user = useAuthStore((s) => s.user)
-
-  useEffect(() => {
-    void refreshAlerts()
-  }, [])
 
   const availablePhones = useMemo(() => getAvailablePhones(), [getAvailablePhones, phones])
   const activeCredits = useMemo(() => getActiveCredits(), [getActiveCredits, sales])
@@ -103,7 +98,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-3xl gradient-primary p-8 lg:p-10 shadow-premium">
+      <div className="relative overflow-hidden rounded-2xl gradient-primary p-5 shadow-premium sm:rounded-3xl sm:p-8 lg:p-10">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_50%)]" />
         <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -left-10 -bottom-10 h-48 w-48 rounded-full bg-pink-300/20 blur-3xl" />
@@ -116,29 +111,29 @@ export default function DashboardPage() {
                 Activité du jour
               </span>
             </div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-white tracking-tight">
-              {getGreeting()}, {user?.name.split(" ")[0]}
+            <h1 className="text-2xl font-bold text-white tracking-tight sm:text-3xl lg:text-4xl">
+              {getGreeting()}, {greetingFirstName(user?.name)}
             </h1>
-            <p className="text-white/80 mt-2 text-base lg:text-lg max-w-xl text-balance">
+            <p className="text-white/80 mt-2 text-sm sm:text-base lg:text-lg max-w-xl text-balance">
               Voici un aperçu complet de votre activité commerciale aujourd'hui.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link to="/sales/new">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <Link to="/sales/new" className="w-full sm:w-auto">
               <Button
                 size="lg"
-                className="bg-white text-indigo-600 hover:bg-white/90 shadow-lg font-semibold rounded-xl"
+                className="w-full bg-white text-indigo-600 hover:bg-white/90 shadow-lg font-semibold rounded-xl sm:w-auto"
               >
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Nouvelle vente
               </Button>
             </Link>
-            <Link to="/stock/add">
+            <Link to="/stock/add" className="w-full sm:w-auto">
               <Button
                 size="lg"
                 variant="outline"
-                className="bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white backdrop-blur-sm font-semibold rounded-xl"
+                className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white backdrop-blur-sm font-semibold rounded-xl sm:w-auto"
               >
                 <Package className="mr-2 h-4 w-4" />
                 Ajouter stock
@@ -149,7 +144,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Stock disponible"
           value={availablePhones.length}
@@ -180,14 +175,14 @@ export default function DashboardPage() {
       {/* Charts Section */}
       <div className="grid gap-6 lg:grid-cols-7">
         <div className="lg:col-span-4 rounded-2xl bg-white border border-slate-200/80 shadow-soft overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-            <div>
+          <div className="flex flex-col gap-3 px-4 py-4 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+            <div className="min-w-0">
               <h3 className="text-base font-bold text-slate-900">Évolution des ventes</h3>
               <p className="text-xs text-slate-500 mt-0.5">6 derniers mois — cash vs crédit</p>
             </div>
             {salesTrend && (
               <div
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${
+                className={`flex w-fit shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-lg ${
                   salesTrend.isUp ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
                 }`}
               >
@@ -202,10 +197,10 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             {hasSalesData ? (
               <>
-                <div className="flex items-center gap-4 mb-4 text-xs">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-sm bg-indigo-500" />
                     <span className="text-slate-600 font-medium">Cash</span>
@@ -215,7 +210,8 @@ export default function DashboardPage() {
                     <span className="text-slate-600 font-medium">Crédit</span>
                   </div>
                 </div>
-                <ResponsiveContainer width="100%" height={280}>
+                <div className="h-[220px] w-full sm:h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthsByMonth}>
                     <defs>
                       <linearGradient id="cashGrad" x1="0" y1="0" x2="0" y2="1">
@@ -253,9 +249,10 @@ export default function DashboardPage() {
                     <Bar dataKey="credit" name="Crédit" fill="url(#creditGrad)" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+                </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-[300px] text-center">
+              <div className="flex flex-col items-center justify-center min-h-[220px] sm:min-h-[300px] text-center py-8">
                 <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
                   <BarChart3 className="h-7 w-7 text-slate-400" />
                 </div>
@@ -275,12 +272,13 @@ export default function DashboardPage() {
         </div>
 
         <div className="lg:col-span-3 rounded-2xl bg-white border border-slate-200/80 shadow-soft overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100">
+          <div className="px-4 py-4 border-b border-slate-100 sm:px-6 sm:py-5">
             <h3 className="text-base font-bold text-slate-900">Stock par marque</h3>
             <p className="text-xs text-slate-500 mt-0.5">Répartition des appareils disponibles</p>
           </div>
-          <div className="p-6">
-            <ResponsiveContainer width="100%" height={220}>
+          <div className="p-3 sm:p-6">
+            <div className="mx-auto h-[200px] w-full max-w-[280px] sm:h-[220px] sm:max-w-none">
+              <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={stockByBrand}
@@ -306,6 +304,7 @@ export default function DashboardPage() {
                 />
               </PieChart>
             </ResponsiveContainer>
+            </div>
             <div className="grid grid-cols-2 gap-2 mt-4">
               {stockByBrand.slice(0, 4).map((brand, i) => (
                 <div key={brand.name} className="flex items-center gap-2 text-xs">
@@ -325,15 +324,15 @@ export default function DashboardPage() {
       {/* Activity Section */}
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl bg-white border border-slate-200/80 shadow-soft overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+          <div className="flex flex-col gap-3 px-4 py-4 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
                 <Activity className="h-4 w-4 text-indigo-600" />
               </div>
-              <h3 className="text-base font-bold text-slate-900">Activité récente</h3>
+              <h3 className="text-base font-bold text-slate-900 truncate">Activité récente</h3>
             </div>
-            <Link to="/stock/history">
-              <Button variant="ghost" size="sm" className="text-xs font-semibold rounded-lg">
+            <Link to="/stock/history" className="shrink-0">
+              <Button variant="ghost" size="sm" className="text-xs font-semibold rounded-lg w-full sm:w-auto">
                 Voir tout <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </Button>
             </Link>
@@ -353,7 +352,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={mov.id}
-                  className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/60 transition-colors"
+                  className="flex flex-col gap-2 px-4 py-3.5 hover:bg-slate-50/60 transition-colors sm:flex-row sm:items-center sm:justify-between sm:px-6"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
@@ -369,7 +368,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs text-slate-400 font-medium shrink-0 ml-3">
+                  <span className="text-xs text-slate-400 font-medium shrink-0 sm:ml-3 pl-8 sm:pl-0">
                     {formatDate(mov.date)}
                   </span>
                 </div>
@@ -379,20 +378,20 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-2xl bg-white border border-slate-200/80 shadow-soft overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center">
+          <div className="flex flex-col gap-3 px-4 py-4 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
               </div>
-              <h3 className="text-base font-bold text-slate-900">
-                Alertes actives
-                <span className="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold">
+              <h3 className="text-base font-bold text-slate-900 flex flex-wrap items-center gap-2">
+                <span className="truncate">Alertes actives</span>
+                <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold shrink-0">
                   {activeAlerts.length}
                 </span>
               </h3>
             </div>
-            <Link to="/alerts">
-              <Button variant="ghost" size="sm" className="text-xs font-semibold rounded-lg">
+            <Link to="/alerts" className="shrink-0">
+              <Button variant="ghost" size="sm" className="text-xs font-semibold rounded-lg w-full sm:w-auto">
                 Voir tout <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </Button>
             </Link>
@@ -405,7 +404,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={alert.id}
-                  className="flex items-start gap-3 px-6 py-3.5 hover:bg-slate-50/60 transition-colors"
+                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50/60 transition-colors sm:px-6"
                 >
                   <div className={`h-2.5 w-2.5 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
                   <div className="min-w-0 flex-1">
@@ -416,7 +415,7 @@ export default function DashboardPage() {
               )
             })}
             {activeAlerts.length === 0 && (
-              <div className="px-6 py-8 text-center">
+              <div className="px-4 py-8 text-center sm:px-6">
                 <p className="text-sm text-slate-500">Aucune alerte active 🎉</p>
               </div>
             )}
@@ -427,7 +426,7 @@ export default function DashboardPage() {
       {/* Overdue credits */}
       {overdueCredits.length > 0 && (
         <div className="rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 overflow-hidden">
-          <div className="px-6 py-5 border-b border-red-100">
+          <div className="px-4 py-4 border-b border-red-100 sm:px-6 sm:py-5">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
                 <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -447,7 +446,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={sale.id}
-                  className="flex items-center justify-between px-6 py-3.5 hover:bg-red-100/40 transition-colors"
+                  className="flex flex-col gap-2 px-4 py-3.5 hover:bg-red-100/40 transition-colors sm:flex-row sm:items-center sm:justify-between sm:px-6"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 truncate">{client?.name}</p>
@@ -455,7 +454,7 @@ export default function DashboardPage() {
                       {phone?.brand} {phone?.model}
                     </p>
                   </div>
-                  <div className="text-right shrink-0 ml-3">
+                  <div className="text-left shrink-0 sm:text-right sm:ml-3">
                     <p className="text-sm font-bold text-red-700">
                       {formatCurrency(sale.remainingAmount)}
                     </p>
@@ -469,7 +468,7 @@ export default function DashboardPage() {
       )}
 
       {/* Quick stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[
           { label: "Valeur du stock", value: formatCurrency(stockValue), icon: Package, color: "from-indigo-500 to-purple-500" },
           { label: "Total téléphones", value: phones.length, icon: ShoppingCart, color: "from-emerald-500 to-teal-500" },
@@ -477,7 +476,7 @@ export default function DashboardPage() {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 p-6 shadow-soft hover:shadow-premium transition-all"
+            className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 p-4 shadow-soft hover:shadow-premium transition-all sm:p-6"
           >
             <div className={`absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${stat.color} opacity-10 blur-2xl`} />
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
