@@ -5,6 +5,7 @@
 import { apiClient } from './client'
 import type {
   User, Phone, Client, Sale, Payment, StockMovement, Alert, ActivityLog, PhoneExit,
+  PhoneDeletionLog,
 } from '@/types'
 
 /** Limite par défaut des listes synchronisées (bundle + refetch ciblés). */
@@ -55,6 +56,13 @@ export const phonesApi = {
 
   delete: (id: string) =>
     apiClient.delete(`/phones/${id}`),
+
+  /** Admin / gestionnaire — historique des téléphones supprimés */
+  deletionLog: (params?: { limit?: number; offset?: number; search?: string }) =>
+    apiClient.get<{ data: PhoneDeletionLog[]; total: number; limit: number; offset: number; page: number }>(
+      '/phones/deletion-log',
+      { params },
+    ),
 }
 
 // ─── Clients ──────────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { MainLayout } from "@/components/layout/MainLayout"
 import LoginPage from "@/pages/auth/LoginPage"
 import DashboardPage from "@/pages/dashboard/DashboardPage"
 import StockListPage from "@/pages/stock/StockListPage"
+import StockDeletedPage from "@/pages/stock/StockDeletedPage"
 import StockAddPage from "@/pages/stock/StockAddPage"
 import StockDetailPage from "@/pages/stock/StockDetailPage"
 import StockHistoryPage from "@/pages/stock/StockHistoryPage"
@@ -29,6 +30,7 @@ export default function App() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/stock" element={<StockListPage />} />
+          <Route path="/stock/deleted" element={<StockDeletedPage />} />
           <Route path="/stock/add" element={<StockAddPage />} />
           <Route path="/stock/history" element={<StockHistoryPage />} />
           <Route path="/stock/:id" element={<StockDetailPage />} />

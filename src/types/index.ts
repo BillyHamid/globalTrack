@@ -131,6 +131,28 @@ export interface ActivityLog {
   timestamp: string
 }
 
+/** Instantané conservé à la suppression — GET /api/phones/deletion-log */
+export interface PhoneDeletionLog {
+  id: string
+  deletedAt: string
+  deletedById: string
+  deletedBy: { id: string; name: string; email: string }
+  formerPhoneId: string
+  brand: string
+  model: string
+  capacity: string
+  color: string
+  imei: string
+  sellingPrice: number
+  purchasePrice: number | null
+  status: string
+  photos: string
+  notes: string
+  addedAt: string
+  addedById: string
+  addedBy: { id: string; name: string; email: string }
+}
+
 export interface DashboardStats {
   totalStock: number
   soldToday: number

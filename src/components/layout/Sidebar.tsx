@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Package, ShoppingCart, CreditCard, Users,
-  UserCircle, Bell, ChevronLeft, ChevronRight, Smartphone, DoorOpen,
+  UserCircle, Bell, ChevronLeft, ChevronRight, Smartphone, DoorOpen, Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/features/auth/store"
@@ -18,7 +18,13 @@ const navigationGroups = [
   {
     label: "Opérations",
     items: [
-      { name: "Stock", href: "/stock", icon: Package },
+      { name: "Stock", href: "/stock", icon: Package, excludeActivePrefix: "/stock/deleted" },
+      {
+        name: "Suppressions stock",
+        href: "/stock/deleted",
+        icon: Trash2,
+        managerOrAdmin: true,
+      },
       { name: "Sorties", href: "/sorties", icon: DoorOpen },
       { name: "Ventes", href: "/sales", icon: ShoppingCart },
       { name: "Crédits", href: "/credits", icon: CreditCard },
@@ -43,6 +49,13 @@ export function Sidebar() {
       ...group,
       items: group.items.filter((item) => {
         if ((item as any).adminOnly && user?.role !== "admin") return false
+        if (
+          (item as any).managerOrAdmin &&
+          user?.role !== "admin" &&
+          user?.role !== "gestionnaire"
+        ) {
+          return false
+        }
         if (user?.role === "vendeur" && item.href === "/users") return false
         return true
       }),
@@ -85,9 +98,14 @@ export function Sidebar() {
               )}
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const isActive = item.href === "/"
-                    ? location.pathname === "/"
-                    : location.pathname.startsWith(item.href)
+                  const exclude = (item as { excludeActivePrefix?: string }).excludeActivePrefix
+                  const isActive =
+                    item.href === "/"
+                      ? location.pathname === "/"
+                      : exclude && location.pathname.startsWith(exclude)
+                        ? false
+                        : location.pathname === item.href ||
+                          location.pathname.startsWith(`${item.href}/`)
                   const Icon = item.icon
 
                   const link = (

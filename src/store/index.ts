@@ -10,6 +10,7 @@ import { create } from "zustand"
 import type {
   Phone, Sale, Client, StockMovement, Alert, ActivityLog, Payment, PhoneExit,
 } from "@/types"
+import axios from "axios"
 import {
   dashboardBundleApi,
   DEFAULT_LIST_LIMIT,
@@ -49,7 +50,7 @@ interface AppStore {
   // ─── Phone ────────────────────────────────────────────────────────────────
   addPhone: (phone: Omit<Phone, "id" | "status" | "addedAt">, userId: string) => Promise<Phone>
   updatePhone: (id: string, data: Partial<Phone>) => Promise<void>
-  deletePhone: (id: string, userId: string) => Promise<boolean>
+  deletePhone: (id: string, userId: string) => Promise<{ ok: boolean; error?: string }>
   /** Charge un téléphone par id (hors fenêtre du bundle) et fusionne ventes / stock local */
   fetchPhoneById: (id: string) => Promise<Phone | null>
 
@@ -177,9 +178,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
         phones: s.phones.filter(p => p.id !== id),
         movements: s.movements.filter(m => m.phoneId !== id),
       }))
-      return true
-    } catch {
-      return false
+      return { ok: true }
+    } catch (e) {
+      let error: string | undefined
+      if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === "object") {
+        const d = e.response.data as { error?: string }
+        if (typeof d.error === "string") error = d.error
+      }
+      return { ok: false, error }
     }
   },
 

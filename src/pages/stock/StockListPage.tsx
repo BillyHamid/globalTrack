@@ -49,17 +49,20 @@ export default function StockListPage() {
 
   const availableCount = phones.filter((p) => p.status === "disponible").length
 
+  const canDeleteStock = user?.role === "admin" || user?.role === "gestionnaire"
+
   async function handleDelete(phoneId: string) {
     if (!user) {
       toast.error("Vous devez être connecté pour supprimer un téléphone")
       return
     }
-    const ok = await deletePhone(phoneId, user.id)
-    if (ok) {
+    const result = await deletePhone(phoneId, user.id)
+    if (result.ok) {
       toast.success("Téléphone retiré du stock")
     } else {
       toast.error(
-        "Impossible de supprimer ce téléphone (statut non disponible ou déjà vendu)",
+        result.error ??
+          "Suppression impossible (vérifiez vos droits ou le statut de l’appareil).",
       )
     }
   }
@@ -189,7 +192,8 @@ export default function StockListPage() {
                             <Eye className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Voir
                           </Button>
-                          {phone.status === "disponible" && (
+                          {canDeleteStock &&
+                            (phone.status === "disponible" || phone.status === "sortie") && (
                             <div onClick={(e) => e.stopPropagation()}>
                               <ConfirmDialog
                                 trigger={
@@ -199,7 +203,11 @@ export default function StockListPage() {
                                   </Button>
                                 }
                                 title="Supprimer ce téléphone ?"
-                                description="Cette action retirera définitivement l'appareil du stock. Elle n'est possible que pour les appareils encore disponibles et non vendus."
+                                description={
+                                  phone.status === "sortie"
+                                    ? "L’appareil est en sortie : la fiche sortie associée sera effacée avec le téléphone. Aucune vente ne doit être liée."
+                                    : "Cette action retirera définitivement l’appareil du stock. Réservé aux administrateurs et gestionnaires ; pas de vente associée."
+                                }
                                 confirmLabel="Supprimer"
                                 onConfirm={() => handleDelete(phone.id)}
                               />

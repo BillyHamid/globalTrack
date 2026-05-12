@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom"
 import { useNavigate } from "react-router-dom"
 import {
   LayoutDashboard, Package, ShoppingCart, CreditCard, Users,
-  UserCircle, Bell, Smartphone, DoorOpen, LogOut, ChevronRight,
+  UserCircle, Bell, Smartphone, DoorOpen, LogOut, ChevronRight, Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/features/auth/store"
@@ -22,7 +22,20 @@ const navigationGroups = [
   {
     label: "Opérations",
     items: [
-      { name: "Stock", href: "/stock", icon: Package, color: "from-blue-500 to-cyan-500" },
+      {
+        name: "Stock",
+        href: "/stock",
+        icon: Package,
+        color: "from-blue-500 to-cyan-500",
+        excludeActivePrefix: "/stock/deleted",
+      },
+      {
+        name: "Suppressions stock",
+        href: "/stock/deleted",
+        icon: Trash2,
+        color: "from-slate-500 to-slate-600",
+        managerOrAdmin: true,
+      },
       { name: "Sorties", href: "/sorties", icon: DoorOpen, color: "from-orange-500 to-amber-500" },
       { name: "Ventes", href: "/sales", icon: ShoppingCart, color: "from-emerald-500 to-green-500" },
       { name: "Crédits", href: "/credits", icon: CreditCard, color: "from-rose-500 to-pink-500" },
@@ -60,6 +73,13 @@ export function MobileDrawer({ open, onOpenChange }: Props) {
       ...group,
       items: group.items.filter((item) => {
         if ((item as any).adminOnly && user?.role !== "admin") return false
+        if (
+          (item as any).managerOrAdmin &&
+          user?.role !== "admin" &&
+          user?.role !== "gestionnaire"
+        ) {
+          return false
+        }
         if (user?.role === "vendeur" && item.href === "/users") return false
         return true
       }),
@@ -135,9 +155,14 @@ export function MobileDrawer({ open, onOpenChange }: Props) {
               </p>
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const isActive = item.href === "/"
-                    ? location.pathname === "/"
-                    : location.pathname.startsWith(item.href)
+                  const exclude = (item as { excludeActivePrefix?: string }).excludeActivePrefix
+                  const isActive =
+                    item.href === "/"
+                      ? location.pathname === "/"
+                      : exclude && location.pathname.startsWith(exclude)
+                        ? false
+                        : location.pathname === item.href ||
+                          location.pathname.startsWith(`${item.href}/`)
                   const Icon = item.icon
                   const showBadge = item.href === "/alerts" && newAlerts > 0
 

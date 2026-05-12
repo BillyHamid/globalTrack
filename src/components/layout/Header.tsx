@@ -18,6 +18,7 @@ const roleLabels: Record<string, string> = {
 
 const pageLabels: Record<string, string> = {
   "/": "Dashboard",
+  "/stock/deleted": "Suppressions stock",
   "/stock": "Stock",
   "/sorties": "Sorties",
   "/sales": "Ventes",
@@ -45,9 +46,12 @@ export function Header({ onOpenDrawer }: Props) {
     .toUpperCase()
     .slice(0, 2) ?? "?"
 
-  const currentPage = Object.entries(pageLabels).find(([href]) =>
-    href === "/" ? location.pathname === "/" : location.pathname.startsWith(href),
-  )?.[1] ?? ""
+  const currentPage =
+    [...Object.entries(pageLabels)]
+      .sort((a, b) => b[0].length - a[0].length)
+      .find(([href]) =>
+        href === "/" ? location.pathname === "/" : location.pathname.startsWith(href),
+      )?.[1] ?? ""
 
   const handleLogout = () => {
     logout()
