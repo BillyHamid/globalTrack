@@ -47,12 +47,6 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const prefillAccount = (acc: { email: string }) => {
-    setEmail(acc.email)
-    setPassword("globaltrack2024")
-    setError("")
-  }
-
   return (
     <div className="min-h-screen min-h-[100dvh] flex relative overflow-x-hidden overflow-y-auto bg-[#070b18]">
       {/* ─── Aurora background ─────────────────────────────────────────── */}
@@ -390,46 +384,6 @@ export default function LoginPage() {
                     </button>
                   </div>
 
-                  {/* Separator */}
-                  <div className="relative py-3">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-white/[0.06]" />
-                    </div>
-                    <div className="relative flex justify-center">
-                      <span className="px-4 text-[10px] uppercase tracking-[0.15em] text-slate-500 font-semibold bg-transparent">
-                        Accès rapide
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Demo accounts */}
-                  <div className="space-y-2.5">
-                    {[
-                      { email: "sana.djibrill@globaltrack.cd", role: "Administrateur", initials: "SD", gradient: "from-indigo-500 to-purple-600", ring: "ring-indigo-500/30" },
-                      { email: "sana.mohamadi@globaltrack.cd", role: "Vendeur", initials: "SM", gradient: "from-emerald-500 to-teal-600", ring: "ring-emerald-500/30" },
-                      { email: "bernadette@globaltrack.cd", role: "Vendeur", initials: "BE", gradient: "from-amber-500 to-orange-600", ring: "ring-amber-500/30" },
-                    ].map((acc) => (
-                      <button
-                        key={acc.email}
-                        type="button"
-                        onClick={() => prefillAccount(acc)}
-                        className="w-full group flex items-center gap-3.5 p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300"
-                      >
-                        <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${acc.gradient} flex items-center justify-center shrink-0 shadow-lg ring-1 ${acc.ring}`}>
-                          <span className="text-[11px] font-bold text-white">{acc.initials}</span>
-                        </div>
-                        <div className="flex-1 text-left min-w-0">
-                          <p className="text-[13px] font-medium text-slate-200 truncate group-hover:text-white transition-colors">{acc.email}</p>
-                          <p className="text-[10px] text-slate-500 font-medium mt-0.5">{acc.role}</p>
-                        </div>
-                        <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all shrink-0" />
-                      </button>
-                    ))}
-
-                    <p className="text-[10px] text-slate-600 text-center pt-2 select-all">
-                      Mot de passe : <span className="font-mono font-semibold text-slate-400">globaltrack2024</span>
-                    </p>
-                  </div>
                 </form>
               </div>
             </div>
