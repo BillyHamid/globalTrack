@@ -104,8 +104,8 @@ export default function StockDetailPage() {
     setAppleInfo(null)
     try {
       const [result, apple] = await Promise.all([
-        checkIMEI(phone!.imei),
-        checkAppleDevice(phone!.imei),
+        checkIMEI(phone!.imei ?? ""),
+        checkAppleDevice(phone!.imei ?? ""),
       ])
       setImeiResult(result)
       if (apple) setAppleInfo(apple)
@@ -176,7 +176,7 @@ export default function StockDetailPage() {
               <DetailRow icon={Tag} label="Modèle" value={phone.model} />
               <DetailRow icon={Tag} label="Capacité" value={phone.capacity} />
               <DetailRow icon={Tag} label="Couleur" value={phone.color} />
-              <DetailRow icon={Hash} label="IMEI" value={phone.imei} mono />
+              <DetailRow icon={Hash} label="IMEI" value={phone.imei ?? "—"} mono />
               <DetailRow icon={Calendar} label="Date d'ajout" value={formatDate(phone.addedAt)} />
               <DetailRow icon={User} label="Ajouté par" value={addedByUser?.name ?? (addedById || "—")} />
               {phone.photos?.[0] && (

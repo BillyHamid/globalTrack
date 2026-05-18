@@ -95,7 +95,7 @@ export default function SaleNewPage() {
         p.model.toLowerCase().includes(q) ||
         p.capacity.toLowerCase().includes(q) ||
         p.color.toLowerCase().includes(q) ||
-        p.imei.includes(q)
+        (p.imei ?? "").includes(q)
     )
   }, [getAvailablePhones, phoneSearch])
 
