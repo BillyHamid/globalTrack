@@ -22,7 +22,7 @@ export interface Phone {
   sellingPrice: number
   /** Prix d'achat (FCFA), optionnel */
   purchasePrice?: number | null
-  imei: string
+  imei?: string | null
   status: PhoneStatus
   photos: string[]
   addedAt: string
@@ -142,7 +142,7 @@ export interface PhoneDeletionLog {
   model: string
   capacity: string
   color: string
-  imei: string
+  imei?: string | null
   sellingPrice: number
   purchasePrice: number | null
   status: string

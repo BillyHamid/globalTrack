@@ -25,7 +25,6 @@ import {
   cleanModelForAutoFill,
 } from "@/features/imei/service"
 import { checkAppleDevice, type AppleDeviceInfo } from "@/features/imei/apple-check"
-import { apiClient } from "@/api/client"
 import { APP_DEVICE_LINES, inferAppleLineFromMarketingName } from "@/features/imei/device-lines"
 
 const BRANDS = APP_DEVICE_LINES
@@ -226,24 +225,39 @@ export default function StockAddPage() {
     setAppleLoading(true)
     setAppleInfo(null)
     setAppleChecked(false)
+    setSickwVerification(null)
+    setLuhnValid(null)
 
     try {
-      const { data } = await apiClient.post<{ brand: string; model: string; capacity: string }>(
-        '/check-serial',
-        { serialNumber: clean },
-        { timeout: 20000 },
-      )
-
-      if (!brand) setBrand(inferAppleLineFromMarketingName(data.model))
-      if (!model) setModel(cleanModelForAutoFill("Apple", data.model))
-      if (!capacity && data.capacity && data.capacity !== "N/A") {
-        const normalized = data.capacity.replace(/\s+/g, "").toUpperCase()
-        if (CAPACITIES.includes(normalized)) setCapacity(normalized)
+      let sw
+      try {
+        sw = await imeiApi.sickwCheck(clean, 30) // Service 30 — APPLE BASIC INFO
+      } catch {
+        sw = await imeiApi.sickwCheck(clean, 26) // Fallback — APPLE SERIAL INFO
       }
 
-      toast.success("Appareil Apple identifié", { description: data.model })
-    } catch {
-      toast.error("Appareil non reconnu. Vérifiez le numéro de série.")
+      const manufacturer = sickwText(sw.brand) ?? sickwText(sw.result["Manufacturer"])
+      const modelName = sickwText(sw.model) ?? sickwText(sw.result["Model Name"])
+
+      setSickwVerification({ manufacturer, modelName, status: sw.status, result: sw.result })
+      setLuhnValid(true) // affiche le panneau de résultats
+
+      const extracted = extractSickwFieldData(sw.result)
+      if (extracted.brand) setBrand(extracted.brand)
+      if (extracted.model) setModel(extracted.model)
+      if (extracted.capacity) setCapacity(extracted.capacity)
+      if (extracted.color) setColor(extracted.color)
+
+      toast.success("Appareil Apple identifié (SickW)", {
+        description: [manufacturer, modelName].filter(Boolean).join(" — ") || "Réponse reçue",
+      })
+    } catch (err) {
+      setLuhnValid(false)
+      setSickwVerification(null)
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data as { message?: string } | undefined)?.message
+        : undefined
+      toast.error(msg ?? "Appareil non reconnu. Vérifiez le numéro de série.")
     } finally {
       setAppleLoading(false)
       setAppleChecked(true)
@@ -264,14 +278,19 @@ export default function StockAddPage() {
     e.preventDefault()
 
     if (!user) { toast.error("Vous devez être connecté"); return }
-    if (!brand || !model || !capacity || !color || !sellingPrice || !imei) {
+    if (!brand || !model || !capacity || !color || !sellingPrice) {
       toast.error("Veuillez remplir tous les champs obligatoires"); return
     }
-    if (imei.length !== 15 || !validateIMEI(imei)) {
-      toast.error("Veuillez entrer un IMEI valide"); return
+    if (!imei && !serialNumber.trim()) {
+      toast.error("Un IMEI ou un numéro de série est requis"); return
     }
-    if (!isIMEIUnique(imei)) {
-      toast.error("Cet IMEI est déjà dans le stock"); return
+    if (imei) {
+      if (imei.length !== 15 || !validateIMEI(imei)) {
+        toast.error("Veuillez entrer un IMEI valide (15 chiffres)"); return
+      }
+      if (!isIMEIUnique(imei)) {
+        toast.error("Cet IMEI est déjà dans le stock"); return
+      }
     }
 
     const price = Number(sellingPrice)
@@ -299,7 +318,8 @@ export default function StockAddPage() {
           capacity,
           color,
           sellingPrice: price,
-          imei,
+          ...(imei ? { imei } : {}),
+          ...(serialNumber.trim() ? { serialNumber: serialNumber.trim() } : {}),
           photos: photoDataUrl ? [photoDataUrl] : [],
           addedBy: user.id,
           ...(purchase !== undefined ? { purchasePrice: purchase } : {}),
@@ -311,8 +331,17 @@ export default function StockAddPage() {
         description: `${brand} ${model} a été ajouté avec succès.`,
       })
       navigate("/stock")
-    } catch {
-      toast.error("Impossible d'enregistrer le téléphone (vérifiez la connexion et les données).")
+    } catch (err) {
+      let msg = "Impossible d'enregistrer le téléphone."
+      if (axios.isAxiosError(err) && err.response?.data) {
+        const d = err.response.data as { error?: string; details?: { field: string; message: string }[] }
+        if (d.details?.length) {
+          msg = d.details.map(e => `${e.field}: ${e.message}`).join(" | ")
+        } else if (d.error) {
+          msg = d.error
+        }
+      }
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
@@ -361,7 +390,7 @@ export default function StockAddPage() {
               {/* IMEI */}
               <div className="space-y-2">
                 <Label htmlFor="imei">
-                  IMEI * <span className="text-muted-foreground font-normal">(tapez *#06# sur le téléphone)</span>
+                  IMEI <span className="text-muted-foreground font-normal">(tapez *#06# sur le téléphone — optionnel si Serial Number fourni)</span>
                 </Label>
                 <div className="flex gap-2">
                   <Input

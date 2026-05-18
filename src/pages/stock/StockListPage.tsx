@@ -38,7 +38,8 @@ export default function StockListPage() {
         !q ||
         phone.brand.toLowerCase().includes(q) ||
         phone.model.toLowerCase().includes(q) ||
-        phone.imei.includes(q)
+        (phone.imei ?? "").includes(q) ||
+        (phone.notes ?? "").toLowerCase().includes(q)
 
       const matchesBrand = brandFilter === "all" || phone.brand === brandFilter
       const matchesStatus = statusFilter === "all" || phone.status === statusFilter
@@ -93,7 +94,7 @@ export default function StockListPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par marque, modèle ou IMEI..."
+                placeholder="Rechercher par marque, modèle, IMEI ou S/N..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -152,7 +153,7 @@ export default function StockListPage() {
                     <TableHead>Capacité</TableHead>
                     <TableHead>Couleur</TableHead>
                     <TableHead>Prix</TableHead>
-                    <TableHead>IMEI</TableHead>
+                    <TableHead>IMEI / Serial No</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Date d'ajout</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -172,7 +173,12 @@ export default function StockListPage() {
                       <TableCell>{phone.color}</TableCell>
                       <TableCell>{formatCurrency(phone.sellingPrice)}</TableCell>
                       <TableCell className="font-mono text-xs">
-                        {phone.imei}
+                        {phone.imei
+                          ? phone.imei
+                          : (() => {
+                              const m = (phone.notes ?? "").match(/Numéro de série\s*:\s*(\S+)/)
+                              return m ? <span className="text-muted-foreground">S/N: {m[1]}</span> : <span className="text-muted-foreground">—</span>
+                            })()}
                       </TableCell>
                       <TableCell>
                         <PhoneStatusBadge status={phone.status} />
