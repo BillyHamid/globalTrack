@@ -25,6 +25,7 @@ import {
   cleanModelForAutoFill,
 } from "@/features/imei/service"
 import { checkAppleDevice, type AppleDeviceInfo } from "@/features/imei/apple-check"
+import { apiClient } from "@/api/client"
 import { APP_DEVICE_LINES, inferAppleLineFromMarketingName } from "@/features/imei/device-lines"
 
 const BRANDS = APP_DEVICE_LINES
@@ -227,17 +228,22 @@ export default function StockAddPage() {
     setAppleChecked(false)
 
     try {
-      const apple = await checkAppleDevice(clean)
-      if (apple) {
-        setAppleInfo(apple)
-        if (!brand) setBrand(inferAppleLineFromMarketingName(apple.name))
-        if (!model) setModel(cleanModelForAutoFill("Apple", apple.name))
-        toast.success("Appareil Apple identifié", { description: apple.name })
-      } else {
-        toast.error("Appareil non reconnu. Vérifiez le numéro de série.")
+      const { data } = await apiClient.post<{ brand: string; model: string; capacity: string }>(
+        '/check-serial',
+        { serialNumber: clean },
+        { timeout: 20000 },
+      )
+
+      if (!brand) setBrand(inferAppleLineFromMarketingName(data.model))
+      if (!model) setModel(cleanModelForAutoFill("Apple", data.model))
+      if (!capacity && data.capacity && data.capacity !== "N/A") {
+        const normalized = data.capacity.replace(/\s+/g, "").toUpperCase()
+        if (CAPACITIES.includes(normalized)) setCapacity(normalized)
       }
+
+      toast.success("Appareil Apple identifié", { description: data.model })
     } catch {
-      toast.error("Erreur de connexion à l'API Apple")
+      toast.error("Appareil non reconnu. Vérifiez le numéro de série.")
     } finally {
       setAppleLoading(false)
       setAppleChecked(true)
