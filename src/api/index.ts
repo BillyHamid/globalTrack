@@ -122,6 +122,12 @@ export const salesApi = {
 
   updatePaymentDepositProof: (saleId: string, paymentId: string, data: { depositProof: string }) =>
     apiClient.patch<Payment>(`/sales/${saleId}/payments/${paymentId}`, data),
+
+  softCancel: (id: string) =>
+    apiClient.patch<Sale>(`/sales/${id}/cancel`, {}),
+
+  delete: (id: string) =>
+    apiClient.delete<{ ok: boolean }>(`/sales/${id}`),
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────

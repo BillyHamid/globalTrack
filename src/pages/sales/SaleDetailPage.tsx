@@ -1,8 +1,8 @@
 import { useState } from "react"
 import type { Payment } from "@/types"
-import { useParams, Link } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, Smartphone, User, CalendarDays, DollarSign, Plus,
+  ArrowLeft, Smartphone, User, CalendarDays, DollarSign, Plus, Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -28,18 +28,59 @@ import { useAuthStore } from "@/features/auth/store"
 
 export default function SaleDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const sale = useAppStore((state) => state.sales.find((s) => s.id === id))
-  const { getPhone, getClient, getUser, addPayment, updatePaymentDepositProof } = useAppStore()
+  const { getPhone, getClient, getUser, addPayment, updatePaymentDepositProof, softCancelSale, deleteSale } = useAppStore()
   const { user } = useAuthStore()
 
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentMethod, setPaymentMethod] = useState("")
   const [depositProofDataUrl, setDepositProofDataUrl] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [openDialog, setOpenDialog] = useState<"cancel" | "delete" | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const [proofPayment, setProofPayment] = useState<Payment | null>(null)
   const [proofDraft, setProofDraft] = useState<string | null>(null)
   const [proofSaving, setProofSaving] = useState(false)
+
+  const canManageSale = user?.role === "admin" || user?.role === "gestionnaire"
+  const isAlreadyCancelled = sale?.status === "annulée"
+
+  async function handleSoftCancel() {
+    if (!id) return
+    setSubmitting(true)
+    try {
+      const result = await softCancelSale(id)
+      if (!result.ok) {
+        toast.error(result.error ?? "Impossible d'annuler la vente")
+        return
+      }
+      toast.success("Vente annulée", {
+        description: "Le téléphone est de nouveau disponible en stock.",
+      })
+    } finally {
+      setSubmitting(false)
+      setOpenDialog(null)
+    }
+  }
+
+  async function handleDeleteSale() {
+    if (!id) return
+    setSubmitting(true)
+    try {
+      const result = await deleteSale(id)
+      if (!result.ok) {
+        toast.error(result.error ?? "Impossible de supprimer la vente")
+        return
+      }
+      toast.success("Vente supprimée définitivement")
+      navigate("/sales")
+    } finally {
+      setSubmitting(false)
+      setOpenDialog(null)
+    }
+  }
 
   if (!sale) {
     return (
@@ -146,13 +187,75 @@ export default function SaleDetailPage() {
             <p className="text-muted-foreground">Réf: {sale.id.toUpperCase()}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={sale.type === "cash" ? "info" : "warning"}>
             {sale.type === "cash" ? "Cash" : "Crédit"}
           </Badge>
           <PaymentStatusBadge status={sale.paymentStatus} />
+          {isAlreadyCancelled && (
+            <Badge variant="destructive">Annulée</Badge>
+          )}
+          {canManageSale && !isAlreadyCancelled && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOpenDialog("cancel")}
+            >
+              Annuler la vente
+            </Button>
+          )}
+          {canManageSale && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setOpenDialog("delete")}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Supprimer
+            </Button>
+          )}
         </div>
       </div>
+
+      <Dialog open={openDialog === "cancel"} onOpenChange={(o) => !o && setOpenDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Annuler cette vente ?</DialogTitle>
+            <DialogDescription>
+              La vente sera marquée comme &quot;annulée&quot; et restera visible dans l&apos;historique.
+              Le téléphone sera remis en stock comme disponible. Les paiements déjà enregistrés restent consultables.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenDialog(null)} disabled={submitting}>
+              Retour
+            </Button>
+            <Button variant="outline" onClick={() => void handleSoftCancel()} disabled={submitting}>
+              {submitting ? "Annulation…" : "Confirmer l'annulation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openDialog === "delete"} onOpenChange={(o) => !o && setOpenDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer définitivement cette vente ?</DialogTitle>
+            <DialogDescription>
+              Cette action est irréversible. La vente et tous ses paiements seront effacés de la base de données.
+              {!isAlreadyCancelled && " Le téléphone sera remis en stock comme disponible."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenDialog(null)} disabled={submitting}>
+              Retour
+            </Button>
+            <Button variant="destructive" onClick={() => void handleDeleteSale()} disabled={submitting}>
+              {submitting ? "Suppression…" : "Supprimer définitivement"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>

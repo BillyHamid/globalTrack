@@ -34,6 +34,8 @@ export type SaleType = "cash" | "credit"
 
 export type PaymentStatus = "paye" | "partiel" | "impaye"
 
+export type SaleStatus = "active" | "annulée"
+
 export interface Payment {
   id: string
   saleId: string
@@ -61,6 +63,7 @@ export interface Sale {
   remainingAmount: number
   payments: Payment[]
   paymentStatus: PaymentStatus
+  status: SaleStatus
   date: string
   dueDate?: string
   notes?: string

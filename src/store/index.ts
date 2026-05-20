@@ -28,6 +28,13 @@ const ALERTS_REFRESH_TTL_MS = 30_000
 let refreshAlertsInFlight: Promise<void> | null = null
 let lastAlertsRefreshAt = 0
 
+function extractAxiosError(e: unknown): string | undefined {
+  if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === "object") {
+    const d = e.response.data as { error?: string }
+    if (typeof d.error === "string") return d.error
+  }
+}
+
 interface AppStore {
   // ─── État ────────────────────────────────────────────────────────────────
   phones: Phone[]
@@ -68,6 +75,8 @@ interface AppStore {
     params: { amount: number; method: string; depositProof?: string },
   ) => Promise<Payment | null>
   updatePaymentDepositProof: (saleId: string, paymentId: string, depositProof: string) => Promise<Payment | null>
+  softCancelSale: (saleId: string) => Promise<{ ok: boolean; error?: string }>
+  deleteSale: (saleId: string) => Promise<{ ok: boolean; error?: string }>
 
   // ─── Client ───────────────────────────────────────────────────────────────
   addClient: (data: Omit<Client, "id" | "createdAt" | "totalPurchases" | "totalDebt">) => Promise<Client>
@@ -180,12 +189,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }))
       return { ok: true }
     } catch (e) {
-      let error: string | undefined
-      if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === "object") {
-        const d = e.response.data as { error?: string }
-        if (typeof d.error === "string") error = d.error
-      }
-      return { ok: false, error }
+      return { ok: false, error: extractAxiosError(e) }
     }
   },
 
@@ -294,6 +298,55 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return updated
     } catch {
       return null
+    }
+  },
+
+  softCancelSale: async (saleId) => {
+    try {
+      const res = await salesApi.softCancel(saleId)
+      const updated = res.data
+      set(s => ({
+        sales: s.sales.map(sl => sl.id === saleId ? { ...sl, ...updated } : sl),
+        phones: s.phones.map(p => p.id === updated.phoneId ? { ...p, status: "disponible" as const } : p),
+        clients: s.clients.map(c =>
+          c.id === updated.clientId
+            ? { ...c, totalPurchases: Math.max(0, c.totalPurchases - 1) }
+            : c
+        ),
+      }))
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: extractAxiosError(e) }
+    }
+  },
+
+  deleteSale: async (saleId) => {
+    try {
+      const sale = get().sales.find(s => s.id === saleId)
+      await salesApi.delete(saleId)
+      const shouldRestoreStock = sale != null && sale.status !== "annulée"
+      set(s => ({
+        sales: s.sales.filter(sl => sl.id !== saleId),
+        phones: shouldRestoreStock
+          ? s.phones.map(p => p.id === sale!.phoneId ? { ...p, status: "disponible" as const } : p)
+          : s.phones,
+        clients: shouldRestoreStock
+          ? s.clients.map(c =>
+              c.id === sale!.clientId
+                ? { ...c, totalPurchases: Math.max(0, c.totalPurchases - 1) }
+                : c
+            )
+          : s.clients,
+      }))
+      try {
+        const movementsRes = await movementsApi.list({ limit: DEFAULT_LIST_LIMIT })
+        set({ movements: movementsRes.data.data })
+      } catch {
+        /* la vente est supprimée même si le rafraîchissement des mouvements échoue */
+      }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: extractAxiosError(e) }
     }
   },
 
