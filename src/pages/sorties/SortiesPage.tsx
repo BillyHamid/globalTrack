@@ -54,7 +54,8 @@ export default function SortiesPage() {
       (p) =>
         p.brand.toLowerCase().includes(q) ||
         p.model.toLowerCase().includes(q) ||
-        (p.imei ?? "").includes(q),
+        (p.imei ?? "").includes(q) ||
+        (p.notes ?? "").toLowerCase().includes(q),
     )
   }, [getAvailablePhones, phoneSearch])
 
