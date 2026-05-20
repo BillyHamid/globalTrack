@@ -63,7 +63,7 @@ export interface Sale {
   remainingAmount: number
   payments: Payment[]
   paymentStatus: PaymentStatus
-  status: SaleStatus
+  status?: SaleStatus
   date: string
   dueDate?: string
   notes?: string
