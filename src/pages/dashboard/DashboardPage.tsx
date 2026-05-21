@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { StatsCard } from "@/components/common/StatsCard"
 import { PaymentStatusBadge } from "@/components/common/StatusBadge"
+import { StockBreakdownWidget } from "@/components/common/StockBreakdownWidget"
 import { formatCurrency, formatDate, greetingFirstName } from "@/lib/utils"
 import { useAppStore } from "@/store"
 import { useAuthStore } from "@/features/auth/store"
@@ -320,6 +321,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Stock Breakdown Analytics */}
+      <StockBreakdownWidget phones={phones} />
 
       {/* Activity Section */}
       <div className="grid gap-6 lg:grid-cols-2">

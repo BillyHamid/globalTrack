@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Plus, Search, Eye, Trash2 } from "lucide-react"
+import { Plus, Search, Eye, Trash2, HardDrive, Palette } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -18,6 +19,35 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { useAppStore } from "@/store"
 import { useAuthStore } from "@/features/auth/store"
 
+const KNOWN_COLORS = new Set([
+  'noir', 'noire', 'blanc', 'blanche', 'bleu', 'bleue', 'rouge',
+  'violet', 'violette', 'or', 'gris', 'grise', 'vert', 'verte',
+  'rose', 'jaune', 'orange', 'argent', 'titanium', 'naturel', 'naturelle',
+  'black', 'white', 'blue', 'red', 'gold', 'gray', 'grey', 'green',
+  'pink', 'purple', 'silver',
+])
+
+interface ParsedSearch {
+  capacity: string | null
+  color: string | null
+  text: string
+}
+
+function parseSmartSearch(query: string): ParsedSearch {
+  if (!query.trim()) return { capacity: null, color: null, text: '' }
+  const tokens = query.toLowerCase().trim().split(/\s+/)
+  let capacity: string | null = null
+  let color: string | null = null
+  const textTokens: string[] = []
+  for (const token of tokens) {
+    const capMatch = token.match(/^(\d+)(go|gb|to|tb)?$/)
+    if (capMatch && !capacity) { capacity = capMatch[1]; continue }
+    if (KNOWN_COLORS.has(token) && !color) { color = token; continue }
+    textTokens.push(token)
+  }
+  return { capacity, color, text: textTokens.join(' ') }
+}
+
 export default function StockListPage() {
   const navigate = useNavigate()
   const { phones, deletePhone } = useAppStore()
@@ -31,22 +61,27 @@ export default function StockListPage() {
     [phones],
   )
 
+  const parsed = useMemo(() => parseSmartSearch(search), [search])
+
   const filteredPhones = useMemo(() => {
     return phones.filter((phone) => {
-      const q = search.toLowerCase()
-      const matchesSearch =
-        !q ||
-        phone.brand.toLowerCase().includes(q) ||
-        phone.model.toLowerCase().includes(q) ||
-        (phone.imei ?? "").includes(q) ||
-        (phone.notes ?? "").toLowerCase().includes(q)
-
-      const matchesBrand = brandFilter === "all" || phone.brand === brandFilter
-      const matchesStatus = statusFilter === "all" || phone.status === statusFilter
-
-      return matchesSearch && matchesBrand && matchesStatus
+      if (parsed.text) {
+        const tokens = parsed.text.split(/\s+/).filter(Boolean)
+        const allMatch = tokens.every(token =>
+          phone.brand.toLowerCase().includes(token) ||
+          phone.model.toLowerCase().includes(token) ||
+          (phone.imei ?? "").includes(token) ||
+          (phone.notes ?? "").toLowerCase().includes(token)
+        )
+        if (!allMatch) return false
+      }
+      if (parsed.capacity && !phone.capacity.toLowerCase().includes(parsed.capacity)) return false
+      if (parsed.color && !phone.color.toLowerCase().includes(parsed.color)) return false
+      if (brandFilter !== "all" && phone.brand !== brandFilter) return false
+      if (statusFilter !== "all" && phone.status !== statusFilter) return false
+      return true
     })
-  }, [phones, search, brandFilter, statusFilter])
+  }, [phones, parsed, brandFilter, statusFilter])
 
   const availableCount = phones.filter((p) => p.status === "disponible").length
 
@@ -94,7 +129,7 @@ export default function StockListPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par marque, modèle, IMEI ou S/N..."
+                placeholder="Ex: iPhone 17 256Go noir, Samsung S25..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -126,6 +161,23 @@ export default function StockListPage() {
               </SelectContent>
             </Select>
           </div>
+          {(parsed.capacity || parsed.color) && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Détecté :</span>
+              {parsed.capacity && (
+                <Badge variant="secondary" className="gap-1 text-xs">
+                  <HardDrive className="h-3 w-3" />
+                  {parsed.capacity} Go
+                </Badge>
+              )}
+              {parsed.color && (
+                <Badge variant="secondary" className="gap-1 text-xs">
+                  <Palette className="h-3 w-3" />
+                  {parsed.color.charAt(0).toUpperCase() + parsed.color.slice(1)}
+                </Badge>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
