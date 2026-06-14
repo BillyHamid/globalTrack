@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { DoorOpen, Loader2, Package, CreditCard } from "lucide-react"
+import { ExportButtons } from "@/components/common/ExportButtons"
+import { formatDateTime } from "@/lib/utils"
+import type { ExportColumn } from "@/lib/export"
+import type { PhoneExit } from "@/types"
 import { toast } from "sonner"
 import { isAxiosError } from "axios"
 import { Button } from "@/components/ui/button"
@@ -22,9 +26,17 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { EmptyState } from "@/components/common/EmptyState"
-import { formatDateTime } from "@/lib/utils"
 import { useAppStore } from "@/store"
-import type { PhoneExit } from "@/types"
+
+const SORTIES_EXPORT_COLUMNS: ExportColumn<PhoneExit>[] = [
+  { header: 'Personne',    value: (e) => e.personName },
+  { header: 'Appareil',    value: (e) => `${e.phone.brand} ${e.phone.model}` },
+  { header: 'IMEI',        value: (e) => e.phone.imei ?? '' },
+  { header: 'Motif',       value: (e) => e.motif },
+  { header: 'Échéance',    value: (e) => formatDateTime(e.dueAt) },
+  { header: 'Statut',      value: (e) => e.status === 'en_cours' ? 'En cours' : 'Retournée' },
+  { header: 'Date retour', value: (e) => e.returnedAt ? formatDateTime(e.returnedAt) : '—' },
+]
 
 function isOverdue(exit: PhoneExit): boolean {
   if (exit.status !== "en_cours") return false
@@ -140,15 +152,23 @@ export default function SortiesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <DoorOpen className="h-7 w-7" />
-          Sorties
-        </h1>
-        <p className="text-muted-foreground">
-          Enregistrez un emprunt de téléphone (essai, dépôt-vente…). Un délai de 48 h est appliqué ; une alerte est créée
-          à l’échéance si l’appareil n’est pas revenu.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <DoorOpen className="h-7 w-7" />
+            Sorties
+          </h1>
+          <p className="text-muted-foreground">
+            Enregistrez un emprunt de téléphone (essai, dépôt-vente…). Un délai de 48 h est appliqué ; une alerte est créée
+            à l’échéance si l’appareil n’est pas revenu.
+          </p>
+        </div>
+        <ExportButtons
+          data={sorties}
+          columns={SORTIES_EXPORT_COLUMNS}
+          filename={`sorties-${new Date().toISOString().slice(0, 10)}`}
+          title="Sorties — GlobalTrack"
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

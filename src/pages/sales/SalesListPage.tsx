@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/table"
 import { PaymentStatusBadge } from "@/components/common/StatusBadge"
 import { EmptyState } from "@/components/common/EmptyState"
+import { ExportButtons } from "@/components/common/ExportButtons"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import type { ExportColumn } from "@/lib/export"
 import { useAppStore } from "@/store"
 import type { Client, Phone, Sale, User } from "@/types"
 
@@ -93,6 +95,7 @@ function SalesTable({
 export default function SalesListPage() {
   const { sales, getPhone, getClient, getUser } = useAppStore()
   const [search, setSearch] = useState("")
+  const [activeTab, setActiveTab] = useState("all")
 
   const filteredSales = useMemo(() => {
     if (!search.trim()) return sales
@@ -114,6 +117,20 @@ export default function SalesListPage() {
   const cashSales = filteredSales.filter((s) => s.type === "cash")
   const creditSales = filteredSales.filter((s) => s.type === "credit")
 
+  const exportableSales = activeTab === "cash" ? cashSales : activeTab === "credit" ? creditSales : filteredSales
+
+  const salesExportColumns: ExportColumn<Sale>[] = [
+    { header: 'Date',             value: (s) => formatDate(s.date) },
+    { header: 'Téléphone',        value: (s) => { const p = getPhone(s.phoneId); return p ? `${p.brand} ${p.model}` : '—' } },
+    { header: 'Client',           value: (s) => getClient(s.clientId)?.name ?? '—' },
+    { header: 'Type',             value: (s) => s.type === 'cash' ? 'Cash' : 'Crédit' },
+    { header: 'Total',            value: (s) => formatCurrency(s.totalAmount), csvValue: (s) => String(s.totalAmount) },
+    { header: 'Payé',             value: (s) => formatCurrency(s.paidAmount),  csvValue: (s) => String(s.paidAmount) },
+    { header: 'Reste',            value: (s) => formatCurrency(s.remainingAmount), csvValue: (s) => String(s.remainingAmount) },
+    { header: 'Statut paiement',  value: (s) => s.paymentStatus },
+    { header: 'Vendeur',          value: (s) => getUser(s.sellerId)?.name ?? '—' },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -121,12 +138,20 @@ export default function SalesListPage() {
           <h1 className="text-xl font-bold sm:text-2xl">Gestion des ventes</h1>
           <p className="text-sm text-muted-foreground sm:text-base">{sales.length} ventes au total</p>
         </div>
-        <Link to="/sales/new" className="shrink-0 w-full sm:w-auto">
-          <Button className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Nouvelle vente
-          </Button>
-        </Link>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 w-full sm:w-auto">
+          <ExportButtons
+            data={exportableSales}
+            columns={salesExportColumns}
+            filename={`ventes-${new Date().toISOString().slice(0, 10)}`}
+            title="Ventes — GlobalTrack"
+          />
+          <Link to="/sales/new" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvelle vente
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="relative w-full max-w-full sm:max-w-sm">
@@ -139,7 +164,7 @@ export default function SalesListPage() {
         />
       </div>
 
-      <Tabs defaultValue="all" className="min-w-0">
+      <Tabs defaultValue="all" className="min-w-0" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">Toutes ({filteredSales.length})</TabsTrigger>
           <TabsTrigger value="cash">Cash ({cashSales.length})</TabsTrigger>

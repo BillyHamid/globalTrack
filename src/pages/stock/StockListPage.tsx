@@ -1,6 +1,10 @@
 import { useState, useMemo } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { Plus, Search, Eye, Trash2, HardDrive, Palette } from "lucide-react"
+import { ExportButtons } from "@/components/common/ExportButtons"
+import { formatCurrency, formatDate } from "@/lib/utils"
+import type { ExportColumn } from "@/lib/export"
+import type { Phone } from "@/types"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,9 +19,20 @@ import {
 import { PhoneStatusBadge } from "@/components/common/StatusBadge"
 import { EmptyState } from "@/components/common/EmptyState"
 import { ConfirmDialog } from "@/components/common/ConfirmDialog"
-import { formatCurrency, formatDate } from "@/lib/utils"
 import { useAppStore } from "@/store"
 import { useAuthStore } from "@/features/auth/store"
+
+const STOCK_EXPORT_COLUMNS: ExportColumn<Phone>[] = [
+  { header: 'Marque',      value: (p) => p.brand },
+  { header: 'Modèle',      value: (p) => p.model },
+  { header: 'Capacité',    value: (p) => p.capacity },
+  { header: 'Couleur',     value: (p) => p.color },
+  { header: 'Prix vente',  value: (p) => formatCurrency(p.sellingPrice), csvValue: (p) => String(p.sellingPrice) },
+  { header: 'Prix achat',  value: (p) => p.purchasePrice != null ? formatCurrency(p.purchasePrice) : '—', csvValue: (p) => p.purchasePrice != null ? String(p.purchasePrice) : '' },
+  { header: 'IMEI / S/N',  value: (p) => p.imei ?? '' },
+  { header: 'Statut',      value: (p) => p.status },
+  { header: "Date d'ajout", value: (p) => formatDate(p.addedAt) },
+]
 
 const KNOWN_COLORS = new Set([
   'noir', 'noire', 'blanc', 'blanche', 'bleu', 'bleue', 'rouge',
@@ -26,6 +41,26 @@ const KNOWN_COLORS = new Set([
   'black', 'white', 'blue', 'red', 'gold', 'gray', 'grey', 'green',
   'pink', 'purple', 'silver',
 ])
+
+// Mots-clés qui indiquent une variante (apparaissent après le numéro de série)
+const VARIANT_KEYWORDS = new Set(['pro', 'max', 'plus', 'ultra', 'air', 'mini', 'edge', 'lite', 'fe'])
+
+// Extrait la série de base d'un modèle : "iPhone 14 Pro Max" → "iPhone 14"
+function extractSeries(model: string): string {
+  // Normalise "S25+" → "S25" pour ne pas traiter le + comme un mot séparé
+  const normalized = model.trim().replace(/(\w+)\+/g, '$1')
+  const words = normalized.split(/\s+/)
+  let foundNumber = false
+  const result: string[] = []
+  for (const word of words) {
+    const hasNumber = /\d/.test(word)
+    if (hasNumber) foundNumber = true
+    // Coupe à partir du premier mot-clé variante qui suit un numéro
+    if (foundNumber && !hasNumber && VARIANT_KEYWORDS.has(word.toLowerCase())) break
+    result.push(word)
+  }
+  return result.join(' ') || model
+}
 
 interface ParsedSearch {
   capacity: string | null
@@ -54,12 +89,42 @@ export default function StockListPage() {
   const { user } = useAuthStore()
   const [search, setSearch] = useState("")
   const [brandFilter, setBrandFilter] = useState<string>("all")
+  const [seriesFilter, setSeriesFilter] = useState<string>("all")
+  const [modelFilter, setModelFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
+  // Niveau 1 — Marques uniques
   const brands = useMemo(
     () => [...new Set(phones.map((p) => p.brand))].sort(),
     [phones],
   )
+
+  // Niveau 2 — Séries détectées automatiquement pour la marque sélectionnée
+  const seriesList = useMemo(() => {
+    if (brandFilter === "all") return []
+    const filtered = phones.filter((p) => p.brand === brandFilter)
+    return [...new Set(filtered.map((p) => extractSeries(p.model)))].sort()
+  }, [phones, brandFilter])
+
+  // Niveau 3 — Variantes pour la série sélectionnée
+  const modelsList = useMemo(() => {
+    if (brandFilter === "all" || seriesFilter === "all") return []
+    const filtered = phones.filter(
+      (p) => p.brand === brandFilter && extractSeries(p.model) === seriesFilter,
+    )
+    return [...new Set(filtered.map((p) => p.model))].sort()
+  }, [phones, brandFilter, seriesFilter])
+
+  function handleBrandChange(value: string) {
+    setBrandFilter(value)
+    setSeriesFilter("all")
+    setModelFilter("all")
+  }
+
+  function handleSeriesChange(value: string) {
+    setSeriesFilter(value)
+    setModelFilter("all")
+  }
 
   const parsed = useMemo(() => parseSmartSearch(search), [search])
 
@@ -78,10 +143,12 @@ export default function StockListPage() {
       if (parsed.capacity && !phone.capacity.toLowerCase().includes(parsed.capacity)) return false
       if (parsed.color && !phone.color.toLowerCase().includes(parsed.color)) return false
       if (brandFilter !== "all" && phone.brand !== brandFilter) return false
+      if (seriesFilter !== "all" && extractSeries(phone.model) !== seriesFilter) return false
+      if (modelFilter !== "all" && phone.model !== modelFilter) return false
       if (statusFilter !== "all" && phone.status !== statusFilter) return false
       return true
     })
-  }, [phones, parsed, brandFilter, statusFilter])
+  }, [phones, parsed, brandFilter, seriesFilter, modelFilter, statusFilter])
 
   const availableCount = phones.filter((p) => p.status === "disponible").length
 
@@ -98,7 +165,7 @@ export default function StockListPage() {
     } else {
       toast.error(
         result.error ??
-          "Suppression impossible (vérifiez vos droits ou le statut de l’appareil).",
+          "Suppression impossible (vérifiez vos droits ou le statut de l'appareil).",
       )
     }
   }
@@ -112,44 +179,86 @@ export default function StockListPage() {
             {availableCount} téléphone{availableCount !== 1 ? "s" : ""} disponible{availableCount !== 1 ? "s" : ""}
           </p>
         </div>
-        <Link to="/stock/add" className="shrink-0 w-full sm:w-auto">
-          <Button className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Ajouter un téléphone
-          </Button>
-        </Link>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 w-full sm:w-auto">
+          <ExportButtons
+            data={filteredPhones}
+            columns={STOCK_EXPORT_COLUMNS}
+            filename={`stock-${new Date().toISOString().slice(0, 10)}`}
+            title="Stock — GlobalTrack"
+          />
+          <Link to="/stock/add" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Ajouter un téléphone
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-semibold">Filtres</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Ex: iPhone 17 256Go noir, Samsung S25..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={brandFilter} onValueChange={setBrandFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+        <CardContent className="space-y-3">
+          {/* Barre de recherche intelligente */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Ex: iPhone 17 256Go noir, Samsung S25..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Filtres en cascade */}
+          <div className="flex flex-wrap gap-3">
+            {/* Niveau 1 — Marque */}
+            <Select value={brandFilter} onValueChange={handleBrandChange}>
+              <SelectTrigger className="w-[155px]">
                 <SelectValue placeholder="Marque" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes les marques</SelectItem>
                 {brands.map((brand) => (
-                  <SelectItem key={brand} value={brand}>
-                    {brand}
-                  </SelectItem>
+                  <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Niveau 2 — Série (visible uniquement si une marque est choisie) */}
+            {brandFilter !== "all" && seriesList.length > 0 && (
+              <Select value={seriesFilter} onValueChange={handleSeriesChange}>
+                <SelectTrigger className="w-[155px]">
+                  <SelectValue placeholder="Série" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les séries</SelectItem>
+                  {seriesList.map((series) => (
+                    <SelectItem key={series} value={series}>{series}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Niveau 3 — Variante (visible uniquement si une série est choisie et qu'il y a plusieurs variantes) */}
+            {seriesFilter !== "all" && modelsList.length > 1 && (
+              <Select value={modelFilter} onValueChange={setModelFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Variante" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les variantes</SelectItem>
+                  {modelsList.map((model) => (
+                    <SelectItem key={model} value={model}>{model}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Statut */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-[155px]">
                 <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent>
@@ -161,8 +270,10 @@ export default function StockListPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Badges de détection intelligente */}
           {(parsed.capacity || parsed.color) && (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-muted-foreground">Détecté :</span>
               {parsed.capacity && (
                 <Badge variant="secondary" className="gap-1 text-xs">
@@ -263,8 +374,8 @@ export default function StockListPage() {
                                 title="Supprimer ce téléphone ?"
                                 description={
                                   phone.status === "sortie"
-                                    ? "L’appareil est en sortie : la fiche sortie associée sera effacée avec le téléphone. Aucune vente ne doit être liée."
-                                    : "Cette action retirera définitivement l’appareil du stock. Réservé aux administrateurs et gestionnaires ; pas de vente associée."
+                                    ? "L'appareil est en sortie : la fiche sortie associée sera effacée avec le téléphone. Aucune vente ne doit être liée."
+                                    : "Cette action retirera définitivement l'appareil du stock. Réservé aux administrateurs et gestionnaires ; pas de vente associée."
                                 }
                                 confirmLabel="Supprimer"
                                 onConfirm={() => handleDelete(phone.id)}

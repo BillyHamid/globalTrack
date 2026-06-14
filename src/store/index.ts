@@ -61,6 +61,9 @@ interface AppStore {
   /** Charge un téléphone par id (hors fenêtre du bundle) et fusionne ventes / stock local */
   fetchPhoneById: (id: string) => Promise<Phone | null>
 
+  /** Charge une vente par id avec paiements complets (incluant depositProof) et met à jour le store */
+  fetchSaleById: (id: string) => Promise<Sale | null>
+
   // ─── Sale ─────────────────────────────────────────────────────────────────
   createSale: (data: {
     phoneId: string; clientId: string; sellerId: string
@@ -216,6 +219,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
         /* le téléphone est chargé même si les mouvements ne se rafraîchissent pas */
       }
       return phone
+    } catch {
+      return null
+    }
+  },
+
+  fetchSaleById: async (id) => {
+    try {
+      const res = await salesApi.get(id)
+      const sale = res.data as Sale
+      set(s => ({
+        sales: s.sales.some(sl => sl.id === id)
+          ? s.sales.map(sl => sl.id === id ? { ...sl, ...sale } : sl)
+          : [sale, ...s.sales],
+      }))
+      return sale
     } catch {
       return null
     }

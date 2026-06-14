@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { Payment } from "@/types"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import {
@@ -30,7 +30,12 @@ export default function SaleDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const sale = useAppStore((state) => state.sales.find((s) => s.id === id))
-  const { getPhone, getClient, getUser, addPayment, updatePaymentDepositProof, softCancelSale, deleteSale } = useAppStore()
+  const { getPhone, getClient, getUser, addPayment, updatePaymentDepositProof, softCancelSale, deleteSale, fetchSaleById } = useAppStore()
+
+  // Charge la vente complète (avec depositProof des paiements) absente du bundle initial
+  useEffect(() => {
+    if (id) void fetchSaleById(id)
+  }, [id, fetchSaleById])
   const { user } = useAuthStore()
 
   const [paymentAmount, setPaymentAmount] = useState("")
