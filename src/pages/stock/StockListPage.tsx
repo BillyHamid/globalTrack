@@ -42,25 +42,6 @@ const KNOWN_COLORS = new Set([
   'pink', 'purple', 'silver',
 ])
 
-// Mots-clés qui indiquent une variante (apparaissent après le numéro de série)
-const VARIANT_KEYWORDS = new Set(['pro', 'max', 'plus', 'ultra', 'air', 'mini', 'edge', 'lite', 'fe'])
-
-// Extrait la série de base d'un modèle : "iPhone 14 Pro Max" → "iPhone 14"
-function extractSeries(model: string): string {
-  // Normalise "S25+" → "S25" pour ne pas traiter le + comme un mot séparé
-  const normalized = model.trim().replace(/(\w+)\+/g, '$1')
-  const words = normalized.split(/\s+/)
-  let foundNumber = false
-  const result: string[] = []
-  for (const word of words) {
-    const hasNumber = /\d/.test(word)
-    if (hasNumber) foundNumber = true
-    // Coupe à partir du premier mot-clé variante qui suit un numéro
-    if (foundNumber && !hasNumber && VARIANT_KEYWORDS.has(word.toLowerCase())) break
-    result.push(word)
-  }
-  return result.join(' ') || model
-}
 
 interface ParsedSearch {
   capacity: string | null
@@ -74,12 +55,39 @@ function parseSmartSearch(query: string): ParsedSearch {
   let capacity: string | null = null
   let color: string | null = null
   const textTokens: string[] = []
-  for (const token of tokens) {
-    const capMatch = token.match(/^(\d+)(go|gb|to|tb)?$/)
-    if (capMatch && !capacity) { capacity = capMatch[1]; continue }
-    if (KNOWN_COLORS.has(token) && !color) { color = token; continue }
+
+  let i = 0
+  while (i < tokens.length) {
+    const token = tokens[i]
+
+    // Capacité avec unité collée : "256go", "128gb", "512go", "1to"
+    const capWithUnit = token.match(/^(\d+)(go|gb|to|tb)$/)
+    if (capWithUnit && !capacity) {
+      capacity = capWithUnit[1]
+      i++
+      continue
+    }
+
+    // Capacité avec unité séparée : "256" "go" → deux tokens consécutifs
+    const numOnly = token.match(/^(\d+)$/)
+    if (numOnly && !capacity && i + 1 < tokens.length && /^(go|gb|to|tb)$/.test(tokens[i + 1])) {
+      capacity = numOnly[1]
+      i += 2
+      continue
+    }
+
+    // Couleur connue
+    if (KNOWN_COLORS.has(token) && !color) {
+      color = token
+      i++
+      continue
+    }
+
+    // Tout le reste (marque, modèle, numéro de modèle seul comme "17") → recherche texte
     textTokens.push(token)
+    i++
   }
+
   return { capacity, color, text: textTokens.join(' ') }
 }
 
@@ -89,7 +97,6 @@ export default function StockListPage() {
   const { user } = useAuthStore()
   const [search, setSearch] = useState("")
   const [brandFilter, setBrandFilter] = useState<string>("all")
-  const [seriesFilter, setSeriesFilter] = useState<string>("all")
   const [modelFilter, setModelFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
@@ -99,30 +106,14 @@ export default function StockListPage() {
     [phones],
   )
 
-  // Niveau 2 — Séries détectées automatiquement pour la marque sélectionnée
-  const seriesList = useMemo(() => {
-    if (brandFilter === "all") return []
-    const filtered = phones.filter((p) => p.brand === brandFilter)
-    return [...new Set(filtered.map((p) => extractSeries(p.model)))].sort()
-  }, [phones, brandFilter])
-
-  // Niveau 3 — Variantes pour la série sélectionnée
+  // Niveau 2 — Tous les modèles individuels de la marque sélectionnée
   const modelsList = useMemo(() => {
-    if (brandFilter === "all" || seriesFilter === "all") return []
-    const filtered = phones.filter(
-      (p) => p.brand === brandFilter && extractSeries(p.model) === seriesFilter,
-    )
-    return [...new Set(filtered.map((p) => p.model))].sort()
-  }, [phones, brandFilter, seriesFilter])
+    if (brandFilter === "all") return []
+    return [...new Set(phones.filter((p) => p.brand === brandFilter).map((p) => p.model))].sort()
+  }, [phones, brandFilter])
 
   function handleBrandChange(value: string) {
     setBrandFilter(value)
-    setSeriesFilter("all")
-    setModelFilter("all")
-  }
-
-  function handleSeriesChange(value: string) {
-    setSeriesFilter(value)
     setModelFilter("all")
   }
 
@@ -143,12 +134,11 @@ export default function StockListPage() {
       if (parsed.capacity && !phone.capacity.toLowerCase().includes(parsed.capacity)) return false
       if (parsed.color && !phone.color.toLowerCase().includes(parsed.color)) return false
       if (brandFilter !== "all" && phone.brand !== brandFilter) return false
-      if (seriesFilter !== "all" && extractSeries(phone.model) !== seriesFilter) return false
       if (modelFilter !== "all" && phone.model !== modelFilter) return false
       if (statusFilter !== "all" && phone.status !== statusFilter) return false
       return true
     })
-  }, [phones, parsed, brandFilter, seriesFilter, modelFilter, statusFilter])
+  }, [phones, parsed, brandFilter, modelFilter, statusFilter])
 
   const availableCount = phones.filter((p) => p.status === "disponible").length
 
@@ -204,7 +194,7 @@ export default function StockListPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Ex: iPhone 17 256Go noir, Samsung S25..."
+              placeholder="Ex: iPhone 17 Pro 256Go vert, Samsung S25 Ultra noir..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -226,29 +216,14 @@ export default function StockListPage() {
               </SelectContent>
             </Select>
 
-            {/* Niveau 2 — Série (visible uniquement si une marque est choisie) */}
-            {brandFilter !== "all" && seriesList.length > 0 && (
-              <Select value={seriesFilter} onValueChange={handleSeriesChange}>
-                <SelectTrigger className="w-[155px]">
-                  <SelectValue placeholder="Série" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toutes les séries</SelectItem>
-                  {seriesList.map((series) => (
-                    <SelectItem key={series} value={series}>{series}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {/* Niveau 3 — Variante (visible uniquement si une série est choisie et qu'il y a plusieurs variantes) */}
-            {seriesFilter !== "all" && modelsList.length > 1 && (
+            {/* Niveau 2 — Modèle (visible uniquement si une marque est choisie) */}
+            {brandFilter !== "all" && modelsList.length > 0 && (
               <Select value={modelFilter} onValueChange={setModelFilter}>
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Variante" />
+                  <SelectValue placeholder="Modèle" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Toutes les variantes</SelectItem>
+                  <SelectItem value="all">Tous les modèles</SelectItem>
                   {modelsList.map((model) => (
                     <SelectItem key={model} value={model}>{model}</SelectItem>
                   ))}
