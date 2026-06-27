@@ -369,7 +369,7 @@ export default function SaleDetailPage() {
         </Card>
       )}
 
-      {(sale.payments.length > 0 || sale.remainingAmount > 0) && (
+      {((sale.payments ?? []).length > 0 || sale.remainingAmount > 0) && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Paiements reçus</CardTitle>
@@ -431,7 +431,7 @@ export default function SaleDetailPage() {
             )}
           </CardHeader>
           <CardContent>
-            {sale.payments.length === 0 ? (
+            {(sale.payments ?? []).length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
                 Aucun versement enregistré pour l&apos;instant.
               </p>
@@ -448,7 +448,7 @@ export default function SaleDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sale.payments.map((payment) => {
+                  {(sale.payments ?? []).map((payment) => {
                     const rid = payment.receivedBy || payment.receivedById || ""
                     const receiver = getUser(rid)
                     const proof = payment.depositProof?.trim()

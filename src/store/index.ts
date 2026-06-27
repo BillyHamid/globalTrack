@@ -308,7 +308,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           sl.id === saleId
             ? {
                 ...sl,
-                payments: sl.payments.map(p => (p.id === paymentId ? { ...p, ...updated } : p)),
+                payments: (sl.payments ?? []).map(p => (p.id === paymentId ? { ...p, ...updated } : p)),
               }
             : sl,
         ),
