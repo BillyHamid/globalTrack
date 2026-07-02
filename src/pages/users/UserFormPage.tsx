@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import { usersApi } from "@/api"
 
 export default function UserFormPage() {
   const navigate = useNavigate()
@@ -20,7 +21,7 @@ export default function UserFormPage() {
   const [password, setPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     if (!name.trim() || !email.trim() || !phone.trim() || !role || !password.trim()) {
@@ -29,13 +30,25 @@ export default function UserFormPage() {
     }
 
     setSubmitting(true)
-    setTimeout(() => {
-      setSubmitting(false)
+    try {
+      await usersApi.create({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        role: role as "admin" | "vendeur" | "gestionnaire",
+        password,
+        avatar: undefined,
+      })
       toast.success("Utilisateur créé avec succès", {
         description: `${name} a été ajouté en tant que ${role}.`,
       })
       navigate("/users")
-    }, 800)
+    } catch (err: any) {
+      const message = err?.response?.data?.message ?? "Erreur lors de la création"
+      toast.error(message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
