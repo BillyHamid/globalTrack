@@ -126,6 +126,9 @@ export const salesApi = {
   softCancel: (id: string) =>
     apiClient.patch<Sale>(`/sales/${id}/cancel`, {}),
 
+  verify: (id: string, data: { status: 'approuve' | 'anomalie'; comment?: string }) =>
+    apiClient.patch<Sale>(`/sales/${id}/verify`, data),
+
   delete: (id: string) =>
     apiClient.delete<{ ok: boolean }>(`/sales/${id}`),
 }

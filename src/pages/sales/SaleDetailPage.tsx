@@ -3,6 +3,7 @@ import type { Payment } from "@/types"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, Smartphone, User, CalendarDays, DollarSign, Plus, Trash2,
+  CheckCircle2, AlertTriangle, ClipboardCheck,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -30,7 +32,7 @@ export default function SaleDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const sale = useAppStore((state) => state.sales.find((s) => s.id === id))
-  const { getPhone, getClient, getUser, addPayment, updatePaymentDepositProof, softCancelSale, deleteSale, fetchSaleById } = useAppStore()
+  const { getPhone, getClient, getUser, addPayment, updatePaymentDepositProof, softCancelSale, deleteSale, fetchSaleById, verifySale } = useAppStore()
 
   // Charge la vente complète (avec depositProof des paiements) absente du bundle initial
   useEffect(() => {
@@ -49,7 +51,11 @@ export default function SaleDetailPage() {
   const [proofDraft, setProofDraft] = useState<string | null>(null)
   const [proofSaving, setProofSaving] = useState(false)
 
+  const [verifyComment, setVerifyComment] = useState("")
+  const [verifying, setVerifying] = useState(false)
+
   const canManageSale = user?.role === "admin" || user?.role === "gestionnaire"
+  const canVerifySale = user?.role === "gestionnaire" || user?.role === "admin"
   const isAlreadyCancelled = sale?.status === "annulée"
 
   async function handleSoftCancel() {
@@ -156,6 +162,29 @@ export default function SaleDetailPage() {
     setPaymentMethod("")
     setDepositProofDataUrl(null)
     setDialogOpen(false)
+  }
+
+  async function handleVerify(status: "approuve" | "anomalie") {
+    if (!id) return
+    if (status === "anomalie" && !verifyComment.trim()) {
+      toast.error("Veuillez laisser un commentaire pour expliquer l'anomalie")
+      return
+    }
+    setVerifying(true)
+    try {
+      const result = await verifySale(id, { status, comment: verifyComment.trim() })
+      if (!result.ok) {
+        toast.error(result.error ?? "Impossible d'enregistrer la vérification")
+        return
+      }
+      toast.success(
+        status === "approuve" ? "Vente approuvée" : "Anomalie signalée",
+        { description: verifyComment.trim() || undefined },
+      )
+      setVerifyComment("")
+    } finally {
+      setVerifying(false)
+    }
   }
 
   async function handleSavePaymentProof() {
@@ -492,6 +521,80 @@ export default function SaleDetailPage() {
                 </TableBody>
               </Table>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {canVerifySale && (
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3 pb-3">
+            <ClipboardCheck className="h-5 w-5 text-violet-600" />
+            <CardTitle className="text-base">Vérification gestionnaire</CardTitle>
+            {sale.verificationStatus === "approuve" && (
+              <Badge className="ml-auto bg-emerald-100 text-emerald-700 border-emerald-200">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                Approuvée
+              </Badge>
+            )}
+            {sale.verificationStatus === "anomalie" && (
+              <Badge className="ml-auto bg-red-100 text-red-700 border-red-200">
+                <AlertTriangle className="mr-1 h-3 w-3" />
+                Anomalie signalée
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {sale.verificationStatus && (
+              <div className={`rounded-lg border p-3 text-sm ${
+                sale.verificationStatus === "approuve"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-red-200 bg-red-50 text-red-800"
+              }`}>
+                <p className="font-medium mb-1">
+                  {sale.verificationStatus === "approuve" ? "Vente conforme" : "Anomalie détectée"}
+                  {sale.verifiedBy && (
+                    <span className="font-normal text-xs ml-2 opacity-70">
+                      par {sale.verifiedBy.name}{sale.verifiedAt ? ` · ${formatDate(sale.verifiedAt)}` : ""}
+                    </span>
+                  )}
+                </p>
+                {sale.verificationComment && (
+                  <p className="text-sm opacity-90">{sale.verificationComment}</p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="verify-comment">
+                Commentaire {sale.verificationStatus === "anomalie" ? "" : "(facultatif)"}
+              </Label>
+              <Textarea
+                id="verify-comment"
+                placeholder="Information manquante, incohérence constatée, remarque..."
+                value={verifyComment}
+                onChange={(e) => setVerifyComment(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => void handleVerify("approuve")}
+                disabled={verifying}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {verifying ? "Enregistrement…" : "Approuver"}
+              </Button>
+              <Button
+                onClick={() => void handleVerify("anomalie")}
+                disabled={verifying}
+                variant="destructive"
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                {verifying ? "Enregistrement…" : "Signaler une anomalie"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

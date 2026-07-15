@@ -36,6 +36,8 @@ export type PaymentStatus = "paye" | "partiel" | "impaye"
 
 export type SaleStatus = "active" | "annulée"
 
+export type SaleVerificationStatus = "approuve" | "anomalie"
+
 export interface Payment {
   id: string
   saleId: string
@@ -67,6 +69,11 @@ export interface Sale {
   date: string
   dueDate?: string
   notes?: string
+  verificationStatus?: SaleVerificationStatus | null
+  verificationComment?: string
+  verifiedAt?: string | null
+  verifiedById?: string | null
+  verifiedBy?: { id: string; name: string } | null
 }
 
 export interface Client {

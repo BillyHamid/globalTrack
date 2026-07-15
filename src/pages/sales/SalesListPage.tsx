@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { Link } from "react-router-dom"
-import { Plus, Search, Eye, ShoppingCart } from "lucide-react"
+import { Plus, Search, Eye, ShoppingCart, CheckCircle2, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -49,6 +49,7 @@ function SalesTable({
           <TableHead>Montant</TableHead>
           <TableHead>Statut</TableHead>
           <TableHead>Vendeur</TableHead>
+          <TableHead>Vérification</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -58,8 +59,15 @@ function SalesTable({
           const client = getClient(sale.clientId)
           const seller = getUser(sale.sellerId)
 
+          const rowClass =
+            sale.verificationStatus === "approuve"
+              ? "bg-emerald-50 hover:bg-emerald-100"
+              : sale.verificationStatus === "anomalie"
+                ? "bg-red-50 hover:bg-red-100"
+                : ""
+
           return (
-            <TableRow key={sale.id}>
+            <TableRow key={sale.id} className={rowClass}>
               <TableCell className="whitespace-nowrap">{formatDate(sale.date)}</TableCell>
               <TableCell className="font-medium">
                 {phone ? `${phone.brand} ${phone.model}` : "—"}
@@ -75,6 +83,23 @@ function SalesTable({
                 <PaymentStatusBadge status={sale.paymentStatus} />
               </TableCell>
               <TableCell>{seller?.name.split(" ")[0] ?? "—"}</TableCell>
+              <TableCell>
+                {sale.verificationStatus === "approuve" && (
+                  <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Approuvée
+                  </span>
+                )}
+                {sale.verificationStatus === "anomalie" && (
+                  <span className="inline-flex items-center gap-1 text-red-700 text-xs font-medium">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Anomalie
+                  </span>
+                )}
+                {!sale.verificationStatus && (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </TableCell>
               <TableCell className="text-right">
                 <Link to={`/sales/${sale.id}`}>
                   <Button variant="ghost" size="sm">

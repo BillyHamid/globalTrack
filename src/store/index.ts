@@ -80,6 +80,7 @@ interface AppStore {
   updatePaymentDepositProof: (saleId: string, paymentId: string, depositProof: string) => Promise<Payment | null>
   softCancelSale: (saleId: string) => Promise<{ ok: boolean; error?: string }>
   deleteSale: (saleId: string) => Promise<{ ok: boolean; error?: string }>
+  verifySale: (saleId: string, data: { status: 'approuve' | 'anomalie'; comment?: string }) => Promise<{ ok: boolean; error?: string }>
 
   // ─── Client ───────────────────────────────────────────────────────────────
   addClient: (data: Omit<Client, "id" | "createdAt" | "totalPurchases" | "totalDebt">) => Promise<Client>
@@ -331,6 +332,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
             ? { ...c, totalPurchases: Math.max(0, c.totalPurchases - 1) }
             : c
         ),
+      }))
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: extractAxiosError(e) }
+    }
+  },
+
+  verifySale: async (saleId, data) => {
+    try {
+      const res = await salesApi.verify(saleId, data)
+      const updated = res.data
+      set(s => ({
+        sales: s.sales.map(sl => sl.id === saleId ? { ...sl, ...updated } : sl),
       }))
       return { ok: true }
     } catch (e) {
