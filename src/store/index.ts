@@ -450,15 +450,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
   returnSortie: async (id, opts) => {
     const res = await sortiesApi.return(id, opts)
     const exit = res.data
-    set(s => ({
-      sorties: s.sorties.map(x => (x.id === id ? exit : x)),
-      phones: s.phones.map(p =>
-        p.id === exit.phoneId ? { ...p, status: "disponible" as const } : p,
-      ),
-      alerts: s.alerts.map(a =>
-        a.type === "sortie_echeance" && a.relatedId === id ? { ...a, status: "resolue" as const } : a,
-      ),
-    }))
+    set(s => {
+      const phoneInStore = s.phones.some(p => p.id === exit.phoneId)
+      return {
+        sorties: s.sorties.map(x => (x.id === id ? exit : x)),
+        phones: phoneInStore
+          ? s.phones.map(p => p.id === exit.phoneId ? { ...p, status: "disponible" as const } : p)
+          : [...s.phones, { ...exit.phone, status: "disponible" as const, photos: [] }],
+        alerts: s.alerts.map(a =>
+          a.type === "sortie_echeance" && a.relatedId === id ? { ...a, status: "resolue" as const } : a,
+        ),
+      }
+    })
     try {
       const movementsRes = await movementsApi.list({ limit: DEFAULT_LIST_LIMIT })
       set({ movements: movementsRes.data.data })
