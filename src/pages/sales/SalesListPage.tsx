@@ -133,6 +133,7 @@ export default function SalesListPage() {
       return (
         phone?.brand.toLowerCase().includes(q) ||
         phone?.model.toLowerCase().includes(q) ||
+        (phone?.imei ?? "").toLowerCase().includes(q) ||
         client?.name.toLowerCase().includes(q) ||
         seller?.name.toLowerCase().includes(q)
       )
@@ -182,7 +183,7 @@ export default function SalesListPage() {
       <div className="relative w-full max-w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Rechercher par téléphone, client, vendeur..."
+          placeholder="Rechercher par téléphone, IMEI, client, vendeur..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"

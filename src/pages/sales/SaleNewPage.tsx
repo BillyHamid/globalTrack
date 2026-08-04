@@ -45,19 +45,29 @@ interface FromSortieState {
   personName: string
 }
 
+interface FromStockState {
+  phoneId: string
+}
+
 export default function SaleNewPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const fromSortie = (location.state as { fromSortie?: FromSortieState } | null)?.fromSortie
+  const locationState = location.state as { fromSortie?: FromSortieState; fromStock?: FromStockState } | null
+  const fromSortie = locationState?.fromSortie
+  const fromStock = locationState?.fromStock
   const { getAvailablePhones, clients, createSale, addClient, returnSortie } = useAppStore()
   const { user } = useAuthStore()
 
-  const draftKey = fromSortie ? `sale-new:sortie-${fromSortie.sortieId}:` : "sale-new:default:"
+  const draftKey = fromSortie
+    ? `sale-new:sortie-${fromSortie.sortieId}:`
+    : fromStock
+      ? `sale-new:stock-${fromStock.phoneId}:`
+      : "sale-new:default:"
 
-  const [step, setStep] = usePersistedState<number>(`${draftKey}step`, fromSortie ? 2 : 1)
+  const [step, setStep] = usePersistedState<number>(`${draftKey}step`, (fromSortie || fromStock) ? 2 : 1)
   const [selectedPhoneId, setSelectedPhoneId] = usePersistedState<string | null>(
     `${draftKey}phoneId`,
-    fromSortie?.phoneId ?? null,
+    fromSortie?.phoneId ?? fromStock?.phoneId ?? null,
   )
   const [selectedClientId, setSelectedClientId] = usePersistedState<string | null>(
     `${draftKey}clientId`,
@@ -263,7 +273,7 @@ export default function SaleNewPage() {
   const resetDraft = () => {
     clearDraft(draftKey)
     setStep(fromSortie ? 2 : 1)
-    setSelectedPhoneId(fromSortie?.phoneId ?? null)
+    setSelectedPhoneId(fromSortie?.phoneId ?? fromStock?.phoneId ?? null)
     setSelectedClientId(null)
     setClientMode(fromSortie ? "new" : "existing")
     setNewClientName(fromSortie?.personName ?? "")
@@ -281,7 +291,7 @@ export default function SaleNewPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
-          <Link to={fromSortie ? "/sorties" : "/sales"}>
+          <Link to={fromSortie ? "/sorties" : fromStock ? "/stock" : "/sales"}>
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>

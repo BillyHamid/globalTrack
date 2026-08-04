@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Plus, Search, Eye, Trash2, HardDrive, Palette } from "lucide-react"
+import { Plus, Search, Eye, Trash2, HardDrive, Palette, ShoppingCart } from "lucide-react"
 import { ExportButtons } from "@/components/common/ExportButtons"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import type { ExportColumn } from "@/lib/export"
@@ -336,6 +336,20 @@ export default function StockListPage() {
                             <Eye className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Voir
                           </Button>
+                          {phone.status === "disponible" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 shrink-0 px-2 text-xs text-emerald-600 hover:text-emerald-700 sm:h-9 sm:px-3 sm:text-sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigate("/sales/new", { state: { fromStock: { phoneId: phone.id } } })
+                              }}
+                            >
+                              <ShoppingCart className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              Vendre
+                            </Button>
+                          )}
                           {canDeleteStock &&
                             (phone.status === "disponible" || phone.status === "sortie") && (
                             <div onClick={(e) => e.stopPropagation()}>
