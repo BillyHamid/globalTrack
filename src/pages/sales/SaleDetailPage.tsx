@@ -3,7 +3,7 @@ import type { Payment } from "@/types"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, Smartphone, User, CalendarDays, DollarSign, Plus, Trash2,
-  CheckCircle2, AlertTriangle, ClipboardCheck,
+  CheckCircle2, AlertTriangle, ClipboardCheck, Printer,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,7 @@ import { PaymentStatusBadge } from "@/components/common/StatusBadge"
 import { PaymentProgress } from "@/components/common/PaymentProgress"
 import { DepositProofField } from "@/components/common/DepositProofField"
 import { formatCurrency, formatDate, formatPaymentMethod } from "@/lib/utils"
+import { generateReceipt } from "@/lib/receipt"
 import { useAppStore } from "@/store"
 import { useAuthStore } from "@/features/auth/store"
 
@@ -53,6 +54,14 @@ export default function SaleDetailPage() {
 
   const [verifyComment, setVerifyComment] = useState("")
   const [verifying, setVerifying] = useState(false)
+
+  async function handlePrintReceipt() {
+    if (!phone || !client || !seller) {
+      toast.error("Données manquantes pour générer le reçu")
+      return
+    }
+    await generateReceipt({ sale, phone, client, seller: { name: seller.name } })
+  }
 
   const canManageSale = user?.role === "admin" || user?.role === "gestionnaire"
   const canVerifySale = user?.role === "gestionnaire" || user?.role === "admin"
@@ -226,6 +235,14 @@ export default function SaleDetailPage() {
             {sale.type === "cash" ? "Cash" : "Crédit"}
           </Badge>
           <PaymentStatusBadge status={sale.paymentStatus} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handlePrintReceipt()}
+          >
+            <Printer className="mr-1 h-4 w-4" />
+            Reçu PDF
+          </Button>
           {isAlreadyCancelled && (
             <Badge variant="destructive">Annulée</Badge>
           )}

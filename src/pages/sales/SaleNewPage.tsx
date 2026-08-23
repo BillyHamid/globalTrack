@@ -18,6 +18,7 @@ import {
 import { DepositProofField } from "@/components/common/DepositProofField"
 import { DraftIndicator } from "@/components/common/DraftIndicator"
 import { cn, formatCurrency } from "@/lib/utils"
+import { generateReceipt } from "@/lib/receipt"
 import { usePersistedState, clearDraft } from "@/lib/use-persisted-state"
 import { useAppStore } from "@/store"
 import { useAuthStore } from "@/features/auth/store"
@@ -250,6 +251,21 @@ export default function SaleNewPage() {
         },
       )
       clearDraft(draftKey)
+      generateReceipt({
+        sale,
+        phone: {
+          brand: selectedPhone.brand,
+          model: selectedPhone.model,
+          capacity: selectedPhone.capacity,
+          color: selectedPhone.color,
+          imei: selectedPhone.imei,
+        },
+        client: {
+          name: displayClientName ?? '',
+          phone: displayClientPhone ?? '',
+        },
+        seller: { name: user?.name ?? 'Vendeur' },
+      }).catch(() => {})
       navigate(fromSortie ? "/sorties" : "/sales")
     } catch {
       toast.error("Impossible d'enregistrer la vente")
