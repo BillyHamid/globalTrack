@@ -56,7 +56,7 @@ export default function SaleDetailPage() {
   const [verifying, setVerifying] = useState(false)
 
   async function handlePrintReceipt() {
-    if (!phone || !client || !seller) {
+    if (!sale || !phone || !client || !seller) {
       toast.error("Données manquantes pour générer le reçu")
       return
     }
