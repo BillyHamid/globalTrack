@@ -42,17 +42,27 @@ export async function generateReceipt({ sale, phone, client, seller }: ReceiptDa
   }
 
   // ── En-tête ──────────────────────────────────────────────
-  doc.setFontSize(20)
+  doc.setFontSize(22)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
-  doc.text('GLOBALTRACK', W / 2, y, { align: 'center' })
+  doc.text('ISTORE', W / 2, y, { align: 'center' })
   y += 6
 
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(100, 116, 139)
   doc.text('Gestion de stock & ventes de telephones', W / 2, y, { align: 'center' })
-  y += 9
+  y += 5
+
+  doc.setFontSize(8)
+  doc.text('KOULOUBA en face de l\'ISPP', W / 2, y, { align: 'center' })
+  y += 4
+
+  doc.text('OUAGADOUGOU - BURKINA FASO', W / 2, y, { align: 'center' })
+  y += 4
+
+  doc.text('(00226) 70 20 34 43', W / 2, y, { align: 'center' })
+  y += 7
 
   rule()
   y += 7
@@ -209,5 +219,5 @@ export async function generateReceipt({ sale, phone, client, seller }: ReceiptDa
   y += 4
   doc.text('Ce recu fait foi de la transaction.', W / 2, y, { align: 'center' })
 
-  doc.save(`recu_${ref}_${sale.date.slice(0, 10)}.pdf`)
+  doc.save(`istore_recu_${ref}_${sale.date.slice(0, 10)}.pdf`)
 }
