@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import type { Payment } from "@/types"
+import type { Payment, Phone } from "@/types"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, Smartphone, User, CalendarDays, DollarSign, Plus, Trash2,
@@ -119,7 +119,7 @@ export default function SaleDetailPage() {
     )
   }
 
-  const phone = getPhone(sale.phoneId)
+  const phone = getPhone(sale.phoneId) ?? (sale as unknown as { phone?: Phone }).phone
   const client = getClient(sale.clientId)
   const seller = getUser(sale.sellerId)
 
@@ -317,7 +317,13 @@ export default function SaleDetailPage() {
           <CardContent className="space-y-1">
             <p className="font-semibold">{phone?.brand} {phone?.model}</p>
             <p className="text-sm text-muted-foreground">{phone?.capacity} · {phone?.color}</p>
-            <p className="text-xs text-muted-foreground">IMEI: {phone?.imei}</p>
+            <p className="text-xs text-muted-foreground">
+              {phone?.imei
+                ? `IMEI: ${phone.imei}`
+                : (phone as unknown as { serialNumber?: string })?.serialNumber
+                  ? `S/N: ${(phone as unknown as { serialNumber?: string }).serialNumber}`
+                  : null}
+            </p>
           </CardContent>
         </Card>
 
