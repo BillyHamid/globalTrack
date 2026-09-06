@@ -320,8 +320,8 @@ export default function SaleDetailPage() {
             <p className="text-xs text-muted-foreground">
               {phone?.imei
                 ? `IMEI: ${phone.imei}`
-                : (phone as unknown as { serialNumber?: string })?.serialNumber
-                  ? `S/N: ${(phone as unknown as { serialNumber?: string }).serialNumber}`
+                : phone?.serialNumber
+                  ? `S/N: ${phone.serialNumber}`
                   : null}
             </p>
           </CardContent>

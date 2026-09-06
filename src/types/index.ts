@@ -23,6 +23,7 @@ export interface Phone {
   /** Prix d'achat (FCFA), optionnel */
   purchasePrice?: number | null
   imei?: string | null
+  serialNumber?: string | null
   status: PhoneStatus
   photos: string[]
   addedAt: string
